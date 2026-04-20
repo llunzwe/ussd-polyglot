@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package ussd.v1.messaging;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/messaging";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - MESSAGING SERVICE (v1)
+// =============================================================================
+// Bounded Context: Notifications
+// Responsibility: SMS, WhatsApp, and email delivery via Africa's Talking and
+// other provider adapters. Supports batch messaging and template-based sending.
+// Language: Python / Go.
+// =============================================================================
+
+service MessagingService {
+    rpc SendSMS(SendSMSRequest) returns (SendMessageResponse);
+    rpc SendWhatsApp(SendWhatsAppRequest) returns (SendMessageResponse);
+    rpc SendEmail(SendEmailRequest) returns (SendMessageResponse);
+    rpc SendBatchMessages(SendBatchMessagesRequest) returns (ussd.v1.common.BatchOperationResult);
+    rpc GetMessageStatus(GetMessageStatusRequest) returns (MessageStatusResponse);
+    rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+    rpc GetMessageTemplate(GetMessageTemplateRequest) returns (MessageTemplate);
+    rpc ListMessageTemplates(ListMessageTemplatesRequest) returns (ListMessageTemplatesResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+enum MessageStatus {
+    MESSAGE_STATUS_UNSPECIFIED = 0;
+    MESSAGE_QUEUED = 1;
+    MESSAGE_SENT = 2;
+    MESSAGE_DELIVERED = 3;
+    MESSAGE_READ = 4;
+    MESSAGE_FAILED = 5;
+    MESSAGE_REJECTED = 6;
+    MESSAGE_EXPIRED = 7;
+    MESSAGE_CANCELLED = 8;
+    reserved 9 to 20;
+}
+
+enum MessageChannel {
+    CHANNEL_UNSPECIFIED = 0;
+    SMS = 1;
+    WHATSAPP = 2;
+    EMAIL = 3;
+    PUSH = 4;
+    reserved 5 to 20;
+}
+
+message SendSMSRequest {
+    string to_number = 1;
+    string message = 2;
+    string sender_id = 3;
+    string tenant_id = 4;
+    string session_id = 5;
+    bool flash = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message SendWhatsAppRequest {
+    string to_number = 1;
+    string message = 2;
+    string template_name = 3;
+    map<string, string> template_params = 4;
+    string tenant_id = 5;
+    string session_id = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message SendEmailRequest {
+    string to_email = 1;
+    string subject = 2;
+    string body = 3;
+    bool is_html = 4;
+    string from_email = 5;
+    string tenant_id = 6;
+    string session_id = 7;
+    repeated string cc = 8;
+    repeated string bcc = 9;
+    ussd.v1.common.TracingContext tracing = 10;
+    ussd.v1.common.RequestMetadata request_metadata = 11;
+    reserved 50 to 100;
+}
+
+message BatchMessageRequest {
+    string recipient = 1;
+    string message = 2;
+    MessageChannel channel = 3;
+    map<string, string> metadata = 4;
+    reserved 50 to 100;
+}
+
+message SendBatchMessagesRequest {
+    string batch_id = 1;
+    string tenant_id = 2;
+    MessageChannel channel = 3;
+    repeated BatchMessageRequest messages = 4;
+    bool continue_on_error = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message SendMessageResponse {
+    string message_id = 1;
+    MessageStatus status = 2;
+    MessageChannel channel = 3;
+    google.protobuf.Timestamp sent_at = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message GetMessageStatusRequest {
+    string message_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message MessageStatusResponse {
+    string message_id = 1;
+    MessageStatus status = 2;
+    MessageChannel channel = 3;
+    string recipient = 4;
+    google.protobuf.Timestamp sent_at = 5;
+    google.protobuf.Timestamp delivered_at = 6;
+    google.protobuf.Timestamp read_at = 7;
+    string error_message = 8;
+    int32 retry_count = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message ListMessagesRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    repeated MessageChannel channels = 3;
+    repeated MessageStatus statuses = 4;
+    string recipient = 5;
+    google.protobuf.Timestamp from_date = 6;
+    google.protobuf.Timestamp to_date = 7;
+    string session_id = 8;
+    ussd.v1.common.TracingContext tracing = 9;
+    ussd.v1.common.RequestMetadata request_metadata = 10;
+    reserved 50 to 100;
+}
+
+message ListMessagesResponse {
+    repeated Message messages = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message Message {
+    string message_id = 1;
+    MessageChannel channel = 2;
+    string recipient = 3;
+    string content_preview = 4;
+    MessageStatus status = 5;
+    google.protobuf.Timestamp sent_at = 6;
+    google.protobuf.Timestamp delivered_at = 7;
+    google.protobuf.Timestamp read_at = 8;
+    string tenant_id = 9;
+    string session_id = 10;
+    reserved 50 to 100;
+}
+
+message GetMessageTemplateRequest {
+    string template_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListMessageTemplatesRequest {
+    string tenant_id = 1;
+    MessageChannel channel = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListMessageTemplatesResponse {
+    repeated MessageTemplate templates = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message MessageTemplate {
+    string template_id = 1;
+    string tenant_id = 2;
+    string template_name = 3;
+    MessageChannel channel = 4;
+    string subject = 5;
+    string body = 6;
+    repeated string variables = 7;
+    bool is_active = 8;
+    google.protobuf.Timestamp created_at = 9;
+    google.protobuf.Timestamp updated_at = 10;
+    ussd.v1.common.Error error = 11;
+    reserved 50 to 100;
+}

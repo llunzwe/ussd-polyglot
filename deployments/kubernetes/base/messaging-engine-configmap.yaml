@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: messaging-engine-config
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: messaging-engine
+    app.kubernetes.io/component: config
+data:
+  RUST_LOG: "info"
+  GRPC_PORT: "50055"
+  BIND_ADDRESS: "0.0.0.0"
+  DATABASE_URL: "postgres://postgres:postgres@postgres:5432/ussd_kernel?sslmode=disable"

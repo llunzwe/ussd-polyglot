@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: edge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  session-reconstructor:
+    image: openai-ussd-kernel/session-reconstructor:latest
+    container_name: edge-session-reconstructor
+    restart: unless-stopped
+    environment:
+      RUST_LOG: info
+      DATABASE_URL: "sqlite:///data/events.db"
+    ports:
+      - "50051:50051"
+    volumes:
+      - session-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+
+  edge-sync:
+    image: python:3.11-slim
+    container_name: edge-sync
+    restart: unless-stopped
+    environment:
+      ORCHESTRATOR_ADDR: "cloud-orchestrator.example.com:443"
+      TLS_CERT_FILE: "/certs/client.crt"
+      TLS_KEY_FILE: "/certs/client.key"
+      TLS_CA_FILE: "/certs/ca.crt"
+      EVENT_LOG_PATH: "/data/events.jsonl"
+      SYNC_INTERVAL_SECONDS: "60"
+    volumes:
+      - ./edge-sync.py:/app/edge-sync.py:ro
+      - session-data:/data
+      - ./certs:/certs:ro
+    command: ["python", "-u", "/app/edge-sync.py"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+volumes:
+  redis-data:
+  session-data:

@@ -1,0 +1,216 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: ussd-postgres
+    environment:
+      POSTGRES_DB: ussd_kernel
+      POSTGRES_USER: ussd
+      POSTGRES_PASSWORD: ussd
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-schema/A000__timescale_compat.sql:/docker-entrypoint-initdb.d/A000__timescale_compat.sql:ro
+      - ./postgres-schema/V001__extensions_and_schemas.sql:/docker-entrypoint-initdb.d/V001__extensions_and_schemas.sql:ro
+      - ./postgres-schema/V002__core_utilities.sql:/docker-entrypoint-initdb.d/V002__core_utilities.sql:ro
+      - ./postgres-schema/V003__audit_event_sourcing.sql:/docker-entrypoint-initdb.d/V003__audit_event_sourcing.sql:ro
+      - ./postgres-schema/V004__provider_adapters.sql:/docker-entrypoint-initdb.d/V004__provider_adapters.sql:ro
+      - ./postgres-schema/V005__jwt_session_tokens.sql:/docker-entrypoint-initdb.d/V005__jwt_session_tokens.sql:ro
+      - ./postgres-schema/V006__core_transaction_log.sql:/docker-entrypoint-initdb.d/V006__core_transaction_log.sql:ro
+      - ./postgres-schema/V007__core_movement_legs.sql:/docker-entrypoint-initdb.d/V007__core_movement_legs.sql:ro
+      - ./postgres-schema/V008__core_movement_postings.sql:/docker-entrypoint-initdb.d/V008__core_movement_postings.sql:ro
+      - ./postgres-schema/V009__redis_cache_schema.sql:/docker-entrypoint-initdb.d/V009__redis_cache_schema.sql:ro
+      - ./postgres-schema/V010__core_entity_sequences.sql:/docker-entrypoint-initdb.d/V010__core_entity_sequences.sql:ro
+      - ./postgres-schema/V011__core_agent_relationships.sql:/docker-entrypoint-initdb.d/V011__core_agent_relationships.sql:ro
+      - ./postgres-schema/V012__core_virtual_accounts.sql:/docker-entrypoint-initdb.d/V012__core_virtual_accounts.sql:ro
+      - ./postgres-schema/V013__observability_metrics.sql:/docker-entrypoint-initdb.d/V013__observability_metrics.sql:ro
+      - ./postgres-schema/V014__consolidated_sessions.sql:/docker-entrypoint-initdb.d/V014__consolidated_sessions.sql:ro
+      - ./postgres-schema/V015__api_versioning.sql:/docker-entrypoint-initdb.d/V015__api_versioning.sql:ro
+      - ./postgres-schema/V016__core_rejection_log.sql:/docker-entrypoint-initdb.d/V016__core_rejection_log.sql:ro
+      - ./postgres-schema/V017__core_settlement_instructions.sql:/docker-entrypoint-initdb.d/V017__core_settlement_instructions.sql:ro
+      - ./postgres-schema/V018__simplified_encryption.sql:/docker-entrypoint-initdb.d/V018__simplified_encryption.sql:ro
+      - ./postgres-schema/V019__consolidated_suspense.sql:/docker-entrypoint-initdb.d/V019__consolidated_suspense.sql:ro
+      - ./postgres-schema/V020__core_liquidity_positions.sql:/docker-entrypoint-initdb.d/V020__core_liquidity_positions.sql:ro
+      - ./postgres-schema/V021__core_reconciliation_runs.sql:/docker-entrypoint-initdb.d/V021__core_reconciliation_runs.sql:ro
+      - ./postgres-schema/V022__core_reconciliation_items.sql:/docker-entrypoint-initdb.d/V022__core_reconciliation_items.sql:ro
+      - ./postgres-schema/V023__core_control_batches.sql:/docker-entrypoint-initdb.d/V023__core_control_batches.sql:ro
+      - ./postgres-schema/V024__core_chart_of_accounts.sql:/docker-entrypoint-initdb.d/V024__core_chart_of_accounts.sql:ro
+      - ./postgres-schema/V025__core_period_end_balances.sql:/docker-entrypoint-initdb.d/V025__core_period_end_balances.sql:ro
+      - ./postgres-schema/V026__core_exchange_rates.sql:/docker-entrypoint-initdb.d/V026__core_exchange_rates.sql:ro
+      - ./postgres-schema/V027__core_bad_debt_provision.sql:/docker-entrypoint-initdb.d/V027__core_bad_debt_provision.sql:ro
+      - ./postgres-schema/V028__core_idempotency_keys.sql:/docker-entrypoint-initdb.d/V028__core_idempotency_keys.sql:ro
+      - ./postgres-schema/V029__core_audit_trail.sql:/docker-entrypoint-initdb.d/V029__core_audit_trail.sql:ro
+      - ./postgres-schema/V030__app_application_registry.sql:/docker-entrypoint-initdb.d/V030__app_application_registry.sql:ro
+      - ./postgres-schema/V031__app_roles_permissions.sql:/docker-entrypoint-initdb.d/V031__app_roles_permissions.sql:ro
+      - ./postgres-schema/V032__app_account_membership.sql:/docker-entrypoint-initdb.d/V032__app_account_membership.sql:ro
+      - ./postgres-schema/V033__app_user_role_assignments.sql:/docker-entrypoint-initdb.d/V033__app_user_role_assignments.sql:ro
+      - ./postgres-schema/V034__app_entitlement_limits.sql:/docker-entrypoint-initdb.d/V034__app_entitlement_limits.sql:ro
+      - ./postgres-schema/V035__app_validation_rules.sql:/docker-entrypoint-initdb.d/V035__app_validation_rules.sql:ro
+      - ./postgres-schema/V036__app_business_calendar.sql:/docker-entrypoint-initdb.d/V036__app_business_calendar.sql:ro
+      - ./postgres-schema/V037__app_fiscal_periods.sql:/docker-entrypoint-initdb.d/V037__app_fiscal_periods.sql:ro
+      - ./postgres-schema/V038__app_cutoff_times.sql:/docker-entrypoint-initdb.d/V038__app_cutoff_times.sql:ro
+      - ./postgres-schema/V039__app_tax_rates.sql:/docker-entrypoint-initdb.d/V039__app_tax_rates.sql:ro
+      - ./postgres-schema/V040__app_matching_rules.sql:/docker-entrypoint-initdb.d/V040__app_matching_rules.sql:ro
+      - ./postgres-schema/V041__app_configuration_store.sql:/docker-entrypoint-initdb.d/V041__app_configuration_store.sql:ro
+      - ./postgres-schema/V042__app_feature_flags.sql:/docker-entrypoint-initdb.d/V042__app_feature_flags.sql:ro
+      - ./postgres-schema/V043__ussd_session_state.sql:/docker-entrypoint-initdb.d/V043__ussd_session_state.sql:ro
+      - ./postgres-schema/V044__app_agent_sessions.sql:/docker-entrypoint-initdb.d/V044__app_agent_sessions.sql:ro
+      - ./postgres-schema/V045__ussd_shortcode_routing.sql:/docker-entrypoint-initdb.d/V045__ussd_shortcode_routing.sql:ro
+      - ./postgres-schema/V046__ussd_menu_configurations.sql:/docker-entrypoint-initdb.d/V046__ussd_menu_configurations.sql:ro
+      - ./postgres-schema/V047__ussd_pending_transactions.sql:/docker-entrypoint-initdb.d/V047__ussd_pending_transactions.sql:ro
+      - ./postgres-schema/V048__compliance_pci_dss_card_tokens.sql:/docker-entrypoint-initdb.d/V048__compliance_pci_dss_card_tokens.sql:ro
+      - ./postgres-schema/V049__financial_commission_commission_tables.sql:/docker-entrypoint-initdb.d/V049__financial_commission_commission_tables.sql:ro
+      - ./postgres-schema/V050__financial_fees_fee_tables.sql:/docker-entrypoint-initdb.d/V050__financial_fees_fee_tables.sql:ro
+      - ./postgres-schema/V051__financial_interest_interest_tables.sql:/docker-entrypoint-initdb.d/V051__financial_interest_interest_tables.sql:ro
+      - ./postgres-schema/V052__functions_account_ops.sql:/docker-entrypoint-initdb.d/V052__functions_account_ops.sql:ro
+      - ./postgres-schema/V053__functions_config_ops.sql:/docker-entrypoint-initdb.d/V053__functions_config_ops.sql:ro
+      - ./postgres-schema/V054__functions_transaction_ops.sql:/docker-entrypoint-initdb.d/V054__functions_transaction_ops.sql:ro
+      - ./postgres-schema/V055__functions_balance_ops.sql:/docker-entrypoint-initdb.d/V055__functions_balance_ops.sql:ro
+      - ./postgres-schema/V056__transaction_submit_transaction.sql:/docker-entrypoint-initdb.d/V056__transaction_submit_transaction.sql:ro
+      - ./postgres-schema/V057__triggers_account_triggers.sql:/docker-entrypoint-initdb.d/V057__triggers_account_triggers.sql:ro
+      - ./postgres-schema/V058__triggers_transaction_triggers.sql:/docker-entrypoint-initdb.d/V058__triggers_transaction_triggers.sql:ro
+      - ./postgres-schema/V059__triggers_posting_triggers.sql:/docker-entrypoint-initdb.d/V059__triggers_posting_triggers.sql:ro
+      - ./postgres-schema/V060__routing_resolve_shortcode.sql:/docker-entrypoint-initdb.d/V060__routing_resolve_shortcode.sql:ro
+      - ./postgres-schema/V061__routing_route_to_application.sql:/docker-entrypoint-initdb.d/V061__routing_route_to_application.sql:ro
+      - ./postgres-schema/V062__session_create_session.sql:/docker-entrypoint-initdb.d/V062__session_create_session.sql:ro
+      - ./postgres-schema/V063__messaging_sms_schema.sql:/docker-entrypoint-initdb.d/V063__messaging_sms_schema.sql:ro
+      - ./postgres-schema/V064__messaging_whatsapp_schema.sql:/docker-entrypoint-initdb.d/V064__messaging_whatsapp_schema.sql:ro
+      - ./postgres-schema/V065__messaging_functions.sql:/docker-entrypoint-initdb.d/V065__messaging_functions.sql:ro
+      - ./postgres-schema/V066__sdk_query_optimization.sql:/docker-entrypoint-initdb.d/V066__sdk_query_optimization.sql:ro
+      - ./postgres-schema/V067__integrity_verification.sql:/docker-entrypoint-initdb.d/V067__integrity_verification.sql:ro
+      - ./postgres-schema/V068__realtime_events.sql:/docker-entrypoint-initdb.d/V068__realtime_events.sql:ro
+      - ./postgres-schema/V069__idempotency_dedup.sql:/docker-entrypoint-initdb.d/V069__idempotency_dedup.sql:ro
+      - ./postgres-schema/V070__reconciliation_settlement.sql:/docker-entrypoint-initdb.d/V070__reconciliation_settlement.sql:ro
+      - ./postgres-schema/V071__api_access_control.sql:/docker-entrypoint-initdb.d/V071__api_access_control.sql:ro
+      - ./postgres-schema/V072__operational_monitoring.sql:/docker-entrypoint-initdb.d/V072__operational_monitoring.sql:ro
+      - ./postgres-schema/V073__security_hardening_rls.sql:/docker-entrypoint-initdb.d/V073__security_hardening_rls.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ussd -d ussd_kernel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ussd-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  session-reconstructor:
+    build:
+      context: .
+      dockerfile: rust-engine/Dockerfile.session
+    container_name: ussd-session-reconstructor
+    environment:
+      DATABASE_URL: postgres://ussd:ussd@postgres:5432/ussd_kernel
+      BIND_ADDRESS: "0.0.0.0"
+      RUST_LOG: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  payment-engine:
+    build:
+      context: .
+      dockerfile: rust-engine/Dockerfile.payment
+    container_name: ussd-payment-engine
+    environment:
+      DATABASE_URL: postgres://ussd:ussd@postgres:5432/ussd_kernel
+      BIND_ADDRESS: "0.0.0.0"
+      ECOCASH_BASE_URL: http://mock-ecocash:8080
+      RUST_LOG: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mock-ecocash:
+        condition: service_started
+
+  go-orchestrator:
+    build:
+      context: .
+      dockerfile: go-orchestrator/Dockerfile
+    container_name: ussd-go-orchestrator
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ussd
+      DB_PASSWORD: ussd
+      DB_NAME: ussd_kernel
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SESSION_SERVICE_ADDR: session-reconstructor:50051
+      PAYMENT_SERVICE_ADDR: payment-engine:50052
+      GRPC_PORT: "9090"
+      ADMIN_GRPC_PORT: "9091"
+      HTTP_PORT: "8080"
+    ports:
+      - "9090:9090"
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      session-reconstructor:
+        condition: service_started
+      payment-engine:
+        condition: service_started
+      mock-tenant-app:
+        condition: service_started
+
+  mock-tenant-app:
+    build:
+      context: .
+      dockerfile: tests/integration/mock_tenant_app/Dockerfile
+    container_name: ussd-mock-tenant-app
+    environment:
+      PORT: "50053"
+    expose:
+      - "50053"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"0.0.0.0\",50053)); s.close()' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  python-gateway:
+    build:
+      context: .
+      dockerfile: python-gateway/Dockerfile
+    container_name: ussd-python-gateway
+    environment:
+      ORCHESTRATOR_ADDR: go-orchestrator:9090
+      GATEWAY_PORT: "8000"
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      go-orchestrator:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  mock-ecocash:
+    build:
+      context: .
+      dockerfile: tests/integration/mock_ecocash/Dockerfile
+    container_name: ussd-mock-ecocash
+    environment:
+      PORT: "8080"
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s

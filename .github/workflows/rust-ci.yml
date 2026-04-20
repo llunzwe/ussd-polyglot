@@ -1,0 +1,43 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'rust-engine/**'
+      - 'protos/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'rust-engine/**'
+      - 'protos/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust-engine
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Check
+        run: cd rust-engine && cargo check --all
+      - name: Clippy
+        run: cd rust-engine && cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cd rust-engine && cargo test --all
+      - name: Format check
+        run: cd rust-engine && cargo fmt -- --check
+      - name: Security scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'rust-engine/'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'

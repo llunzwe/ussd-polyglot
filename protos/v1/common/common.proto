@@ -1,0 +1,403 @@
+syntax = "proto3";
+
+package ussd.v1.common;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/common";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - COMMON TYPES (v1)
+// =============================================================================
+// Purpose: Shared kernel types used across all bounded contexts.
+// Languages: Go (orchestrator), Python (gateway/AI/SDK), Rust (engines).
+// Compliance: ISO 20022 (Money), GDPR (PII handling), W3C Trace Context.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// OpenTelemetry & Request Metadata
+// -----------------------------------------------------------------------------
+
+message TracingContext {
+  string trace_id = 1;
+  string span_id = 2;
+  string parent_span_id = 3;
+  map<string, string> baggage = 4;
+  reserved 50 to 100;
+}
+
+message RequestMetadata {
+  string request_id = 1;
+  google.protobuf.Timestamp received_at = 2;
+  string client_version = 3;
+  TracingContext tracing = 4;
+  string auth_token = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Well-Known Identifiers
+// -----------------------------------------------------------------------------
+
+message UUID {
+  string value = 1;
+  reserved 50 to 100;
+}
+
+message IdempotencyKey {
+  string value = 1;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Monetary Types (ISO 20022 compliant)
+// -----------------------------------------------------------------------------
+
+enum CurrencyCode {
+  CURRENCY_CODE_UNSPECIFIED = 0;
+  ZWL = 1;
+  USD = 2;
+  ZAR = 3;
+  EUR = 4;
+  GBP = 5;
+  reserved 6 to 20;
+}
+
+enum LanguageCode {
+  LANGUAGE_CODE_UNSPECIFIED = 0;
+  EN = 1;
+  SN = 2;
+  ND = 3;
+  reserved 4 to 20;
+}
+
+message Money {
+  string currency_code = 1;
+  int64 amount_cents = 2;
+  CurrencyCode currency = 3;
+  reserved 50 to 100;
+}
+
+message FeeBreakdown {
+  Money provider_fee = 1;
+  Money platform_fee = 2;
+  Money agent_commission = 3;
+  Money tax = 4;
+  Money total_fee = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Enumerations
+// -----------------------------------------------------------------------------
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_ARGUMENT = 1;
+  ERROR_CODE_NOT_FOUND = 2;
+  ERROR_CODE_ALREADY_EXISTS = 3;
+  ERROR_CODE_PERMISSION_DENIED = 4;
+  ERROR_CODE_RESOURCE_EXHAUSTED = 5;
+  ERROR_CODE_FAILED_PRECONDITION = 6;
+  ERROR_CODE_ABORTED = 7;
+  ERROR_CODE_INTERNAL = 8;
+  ERROR_CODE_UNAVAILABLE = 9;
+  ERROR_CODE_DATA_LOSS = 10;
+  ERROR_CODE_UNAUTHENTICATED = 11;
+  ERROR_CODE_IDEMPOTENCY_CONFLICT = 12;
+  ERROR_CODE_CIRCUIT_BREAKER_OPEN = 13;
+  ERROR_CODE_RATE_LIMIT_EXCEEDED = 14;
+  ERROR_CODE_SIM_SWAP_DETECTED = 15;
+  ERROR_CODE_HASH_CHAIN_BROKEN = 16;
+  ERROR_CODE_SESSION_TIMEOUT = 17;
+  ERROR_CODE_PAYMENT_PROVIDER_ERROR = 18;
+  ERROR_CODE_TENANT_NOT_FOUND = 19;
+  ERROR_CODE_DOUBLE_ENTRY_IMBALANCE = 20;
+  ERROR_CODE_CURRENCY_MISMATCH = 21;
+  ERROR_CODE_VALIDATION_FAILED = 22;
+  ERROR_CODE_ENCRYPTION_ERROR = 23;
+  ERROR_CODE_WEBHOOK_DELIVERY_FAILED = 24;
+  ERROR_CODE_AI_INFERENCE_FAILED = 25;
+  ERROR_CODE_RECONCILIATION_MISMATCH = 26;
+  ERROR_CODE_SUSPENSE_UNRESOLVED = 27;
+  ERROR_CODE_SETTLEMENT_FAILED = 28;
+  reserved 50 to 100;
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_PENDING = 1;
+  STATUS_PROCESSING = 2;
+  STATUS_COMPLETED = 3;
+  STATUS_FAILED = 4;
+  STATUS_CANCELLED = 5;
+  STATUS_REJECTED = 6;
+  STATUS_EXPIRED = 7;
+  STATUS_SUSPENDED = 8;
+  STATUS_UNDER_REVIEW = 9;
+  reserved 50 to 100;
+}
+
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  ACTOR_TYPE_USER = 1;
+  ACTOR_TYPE_SYSTEM = 2;
+  ACTOR_TYPE_API = 3;
+  ACTOR_TYPE_BATCH = 4;
+  ACTOR_TYPE_TENANT = 5;
+  ACTOR_TYPE_AGENT = 6;
+  reserved 50 to 100;
+}
+
+enum SIMSwapStatus {
+  SIM_SWAP_STATUS_UNSPECIFIED = 0;
+  SIM_SWAP_NOT_DETECTED = 1;
+  SIM_SWAP_RECENT_24H = 2;
+  SIM_SWAP_RECENT_72H = 3;
+  SIM_SWAP_RECENT_7D = 4;
+  SIM_SWAP_VERIFICATION_REQUIRED = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Error Handling
+// -----------------------------------------------------------------------------
+
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+  map<string, string> details = 3;
+  string trace_id = 4;
+  int32 grpc_code = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Session & Request Context
+// -----------------------------------------------------------------------------
+
+message DeviceContext {
+  string fingerprint_hash = 1;
+  string imei_hash = 2;
+  string imsi_hash = 3;
+  string model = 4;
+  string os_version = 5;
+  string app_version = 6;
+  int32 trust_score = 7;
+  reserved 50 to 100;
+}
+
+message MNOInfo {
+  string operator_code = 1;
+  string network_code = 2;
+  string country_code = 3;
+  string cell_tower_id = 4;
+  reserved 50 to 100;
+}
+
+message GeoLocation {
+  string country_code = 1;
+  string region = 2;
+  string city = 3;
+  double latitude = 4;
+  double longitude = 5;
+  reserved 50 to 100;
+}
+
+message SessionContext {
+  string session_id = 1;
+  string phone_number = 2;
+  string tenant_id = 3;
+  map<string, string> metadata = 4;
+  google.protobuf.Timestamp started_at = 5;
+  string correlation_id = 6;
+  string causation_id = 7;
+  DeviceContext device = 8;
+  MNOInfo mno_info = 9;
+  SIMSwapStatus sim_swap_status = 10;
+  string preferred_language = 11;
+  TracingContext tracing = 12;
+  RequestMetadata request_metadata = 13;
+  string auth_token = 14;
+  map<string, string> consent_flags = 15;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Audit & Compliance
+// -----------------------------------------------------------------------------
+
+message AuditMetadata {
+  string user_id = 1;
+  ActorType actor_type = 2;
+  string client_ip = 3;
+  string user_agent = 4;
+  string application_id = 5;
+  google.protobuf.Timestamp timestamp = 6;
+  GeoLocation geo_location = 7;
+  string api_key_id = 8;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Pagination
+// -----------------------------------------------------------------------------
+
+message Pagination {
+  int32 page_size = 1;
+  string page_token = 2;
+  reserved 50 to 100;
+}
+
+message PaginationMetadata {
+  int32 total_count = 1;
+  string next_page_token = 2;
+  string previous_page_token = 3;
+  bool has_more = 4;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Resilience Policies
+// -----------------------------------------------------------------------------
+
+message RetryPolicy {
+  int32 max_retries = 1;
+  int32 initial_backoff_ms = 2;
+  double backoff_multiplier = 3;
+  int32 max_backoff_ms = 4;
+  bool retry_on_timeout = 5;
+  reserved 50 to 100;
+}
+
+message TimeoutConfig {
+  int32 request_timeout_ms = 1;
+  int32 connection_timeout_ms = 2;
+  int32 idle_timeout_ms = 3;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Rate Limiting & Cache
+// -----------------------------------------------------------------------------
+
+message RateLimitStatus {
+  string resource_type = 1;
+  double tokens_remaining = 2;
+  double bucket_capacity = 3;
+  double refill_rate_per_second = 4;
+  google.protobuf.Timestamp last_refill_at = 5;
+  bool is_blocked = 6;
+  google.protobuf.Timestamp blocked_until = 7;
+  int32 total_requests = 8;
+  int32 throttled_requests = 9;
+  reserved 50 to 100;
+}
+
+message CacheEntry {
+  string cache_key = 1;
+  string key_pattern = 2;
+  string key_type = 3;
+  int32 ttl_seconds = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Batch Operations
+// -----------------------------------------------------------------------------
+
+message BatchOperationResult {
+  string batch_id = 1;
+  int32 total_count = 2;
+  int32 success_count = 3;
+  int32 failure_count = 4;
+  repeated BatchItemError errors = 5;
+  reserved 50 to 100;
+}
+
+message BatchItemError {
+  int32 index = 1;
+  string item_id = 2;
+  Error error = 3;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Cryptography & Security
+// -----------------------------------------------------------------------------
+
+message SigningKeyInfo {
+  string key_id = 1;
+  string algorithm = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  bool is_active = 5;
+  string public_key_pem = 6;
+  reserved 50 to 100;
+}
+
+message EncryptionMetadata {
+  string algorithm = 1;
+  string key_id = 2;
+  string iv = 3;
+  google.protobuf.Timestamp encrypted_at = 4;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Health Checking
+// -----------------------------------------------------------------------------
+
+message HealthRequest {
+  reserved 50 to 100;
+}
+
+message HealthResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+    reserved 50 to 100;
+  }
+
+  ServingStatus status = 1;
+  string version = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  map<string, string> dependencies = 4;
+  map<string, string> metadata = 5;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Event Sourcing
+// -----------------------------------------------------------------------------
+
+message EventEnvelope {
+  string event_id = 1;
+  string event_type = 2;
+  string aggregate_type = 3;
+  string aggregate_id = 4;
+  int64 version = 5;
+  google.protobuf.Struct payload = 6;
+  SessionContext context = 7;
+  AuditMetadata audit = 8;
+  google.protobuf.Timestamp occurred_at = 9;
+  string causation_id = 10;
+  string correlation_id = 11;
+  string idempotency_key = 12;
+  string record_hash = 13;
+  string previous_hash = 14;
+  TracingContext tracing = 15;
+  reserved 50 to 100;
+}
+
+// -----------------------------------------------------------------------------
+// Empty Message
+// -----------------------------------------------------------------------------
+
+message Empty {
+  reserved 50 to 100;
+}

@@ -1,0 +1,586 @@
+syntax = "proto3";
+
+package ussd.v1.orchestrator;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/orchestrator";
+
+import "v1/common/common.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - ORCHESTRATOR SERVICE (v1)
+// =============================================================================
+// Bounded Context: Orchestration & Routing
+// Responsibility: Central nervous system – routes USSD requests, manages
+// tenant lifecycle, appends events to the immutable ledger, executes sagas,
+// and monitors circuit breakers and rate limits.
+// Language: Go (goroutines for concurrency, pgx for PostgreSQL).
+// =============================================================================
+
+service Orchestrator {
+    rpc ForwardUSSD(ForwardUSSDRequest) returns (ForwardUSSDResponse);
+    rpc AppendEvent(AppendEventRequest) returns (AppendEventResponse);
+    rpc AppendEventsBatch(AppendEventsBatchRequest) returns (AppendEventsBatchResponse);
+    rpc ValidateIdempotencyKey(ValidateIdempotencyKeyRequest) returns (ValidateIdempotencyKeyResponse);
+    rpc GetEvents(GetEventsRequest) returns (stream ussd.v1.common.EventEnvelope);
+    rpc ReplayEvents(ReplayEventsRequest) returns (stream ussd.v1.common.EventEnvelope);
+    rpc StreamEvents(StreamEventsRequest) returns (stream ussd.v1.common.EventEnvelope);
+    rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+    rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+    rpc GetSessionState(GetSessionStateRequest) returns (GetSessionStateResponse);
+    rpc RegisterTenant(RegisterTenantRequest) returns (RegisterTenantResponse);
+    rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+    rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+    rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+    rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
+    rpc RotateTenantAPIKey(RotateTenantAPIKeyRequest) returns (RotateTenantAPIKeyResponse);
+    rpc GetCircuitBreakerStatus(GetCircuitBreakerStatusRequest) returns (CircuitBreakerStatus);
+    rpc ResetCircuitBreaker(ResetCircuitBreakerRequest) returns (ussd.v1.common.Empty);
+    rpc GetRateLimitStatus(GetRateLimitStatusRequest) returns (ussd.v1.common.RateLimitStatus);
+    rpc UpdateRateLimitPolicy(UpdateRateLimitPolicyRequest) returns (RateLimitPolicy);
+    rpc GetSystemMetrics(GetSystemMetricsRequest) returns (GetSystemMetricsResponse);
+    rpc GetEventStats(GetEventStatsRequest) returns (GetEventStatsResponse);
+    rpc ExecuteSaga(ExecuteSagaRequest) returns (ExecuteSagaResponse);
+    rpc GetSagaStatus(GetSagaStatusRequest) returns (SagaStatusResponse);
+    rpc CancelSaga(CancelSagaRequest) returns (SagaStatusResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message ForwardUSSDRequest {
+    ussd.v1.common.SessionContext session = 1;
+    string user_input = 2;
+    string current_menu = 3;
+    google.protobuf.Struct session_state = 4;
+    string service_code = 5;
+    string text_so_far = 6;
+    int32 response_timeout_ms = 7;
+    ussd.v1.common.TracingContext tracing = 8;
+    ussd.v1.common.RequestMetadata metadata = 9;
+    reserved 50 to 100;
+}
+
+message ForwardUSSDResponse {
+    enum ResponseType {
+        CON = 0;
+        END = 1;
+        reserved 50 to 100;
+    }
+
+    ResponseType type = 1;
+    string menu_text = 2;
+    repeated MenuOption options = 3;
+    string next_menu = 4;
+    google.protobuf.Struct updated_state = 5;
+    ussd.v1.common.Error error = 6;
+    int64 processing_time_ms = 7;
+    string tenant_endpoint = 8;
+    ussd.v1.common.TracingContext tracing = 9;
+    ussd.v1.common.RequestMetadata metadata = 10;
+    reserved 50 to 100;
+}
+
+message MenuOption {
+    string id = 1;
+    string label = 2;
+    string description = 3;
+    string action = 4;
+    string target_menu = 5;
+    bool default_option = 6;
+    reserved 50 to 100;
+}
+
+message AppendEventRequest {
+    string event_type = 1;
+    string aggregate_type = 2;
+    string aggregate_id = 3;
+    int64 expected_version = 4;
+    google.protobuf.Struct payload = 5;
+    ussd.v1.common.IdempotencyKey idempotency_key = 6;
+    ussd.v1.common.SessionContext context = 7;
+    string correlation_id = 8;
+    string causation_id = 9;
+    bool validate_only = 10;
+    ussd.v1.common.TracingContext tracing = 11;
+    ussd.v1.common.RequestMetadata metadata = 12;
+    reserved 50 to 100;
+}
+
+message AppendEventResponse {
+    string event_id = 1;
+    int64 version = 2;
+    google.protobuf.Timestamp recorded_at = 3;
+    string record_hash = 4;
+    string previous_hash = 5;
+    bool was_duplicate = 6;
+    ussd.v1.common.Error error = 7;
+    reserved 50 to 100;
+}
+
+message AppendEventsBatchRequest {
+    repeated AppendEventRequest events = 1;
+    bool atomic = 2;
+    string batch_id = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata metadata = 5;
+    reserved 50 to 100;
+}
+
+message AppendEventsBatchResponse {
+    repeated AppendEventResponse responses = 1;
+    bool all_succeeded = 2;
+    ussd.v1.common.Error error = 3;
+    string batch_id = 4;
+    reserved 50 to 100;
+}
+
+message ValidateIdempotencyKeyRequest {
+    string idempotency_key = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata metadata = 4;
+    reserved 50 to 100;
+}
+
+message ValidateIdempotencyKeyResponse {
+    bool is_valid = 1;
+    bool exists = 2;
+    string existing_transaction_id = 3;
+    string existing_status = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message GetEventsRequest {
+    string aggregate_type = 1;
+    string aggregate_id = 2;
+    int64 from_version = 3;
+    int64 to_version = 4;
+    int32 limit = 5;
+    bool include_payload = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata metadata = 8;
+    reserved 50 to 100;
+}
+
+message ReplayEventsRequest {
+    string event_type = 1;
+    string aggregate_type = 2;
+    string tenant_id = 3;
+    google.protobuf.Timestamp from_timestamp = 4;
+    google.protobuf.Timestamp to_timestamp = 5;
+    int32 limit = 6;
+    string resume_token = 7;
+    ussd.v1.common.TracingContext tracing = 8;
+    ussd.v1.common.RequestMetadata metadata = 9;
+    reserved 50 to 100;
+}
+
+message StreamEventsRequest {
+    string event_type = 1;
+    string aggregate_type = 2;
+    string tenant_id = 3;
+    google.protobuf.Timestamp from_timestamp = 4;
+    bool include_payload = 5;
+    string resume_token = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata metadata = 8;
+    reserved 50 to 100;
+}
+
+message CreateSessionRequest {
+    string phone_number = 1;
+    string tenant_id = 2;
+    string service_code = 3;
+    string network_code = 4;
+    map<string, string> metadata = 5;
+    string preferred_language = 6;
+    ussd.v1.common.DeviceContext device = 7;
+    ussd.v1.common.MNOInfo mno_info = 8;
+    ussd.v1.common.SIMSwapStatus sim_swap_status = 9;
+    ussd.v1.common.TracingContext tracing = 10;
+    ussd.v1.common.RequestMetadata request_metadata = 11;
+    reserved 50 to 100;
+}
+
+message CreateSessionResponse {
+    string session_id = 1;
+    string session_code = 2;
+    google.protobuf.Timestamp created_at = 3;
+    google.protobuf.Timestamp expires_at = 4;
+    ussd.v1.common.Error error = 5;
+    int32 session_timeout_seconds = 6;
+    bool requires_verification = 7;
+    string verification_method = 8;
+    reserved 50 to 100;
+}
+
+message EndSessionRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    string reason = 3;
+    google.protobuf.Struct final_state = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message EndSessionResponse {
+    bool success = 1;
+    google.protobuf.Timestamp ended_at = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetSessionStateRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    int32 max_events = 3;
+    bool include_metadata = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetSessionStateResponse {
+    string session_id = 1;
+    google.protobuf.Struct state = 2;
+    int64 current_version = 3;
+    int32 events_replayed = 4;
+    int64 replay_time_ms = 5;
+    google.protobuf.Timestamp last_activity = 6;
+    ussd.v1.common.Error error = 7;
+    bool is_valid = 8;
+    reserved 50 to 100;
+}
+
+message RegisterTenantRequest {
+    string tenant_id = 1;
+    string name = 2;
+    string description = 3;
+    string endpoint = 4;
+    TenantType type = 5;
+    int32 rate_limit_rps = 6;
+    int64 monthly_quota = 7;
+    map<string, string> configuration = 8;
+    repeated string service_codes = 9;
+    string webhook_url = 10;
+    repeated string ip_whitelist = 11;
+    string webhook_secret = 12;
+    ussd.v1.common.TracingContext tracing = 13;
+    ussd.v1.common.RequestMetadata metadata = 14;
+    reserved 50 to 100;
+
+    enum TenantType {
+        GRPC = 0;
+        REST = 1;
+        reserved 50 to 100;
+    }
+}
+
+message RegisterTenantResponse {
+    string tenant_id = 1;
+    string api_key = 2;
+    google.protobuf.Timestamp registered_at = 3;
+    google.protobuf.Timestamp api_key_expires_at = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message UpdateTenantRequest {
+    string tenant_id = 1;
+    optional string name = 2;
+    optional string endpoint = 3;
+    optional int32 rate_limit_rps = 4;
+    optional int64 monthly_quota = 5;
+    optional bool active = 6;
+    map<string, string> configuration = 7;
+    optional string webhook_url = 8;
+    repeated string ip_whitelist = 9;
+    ussd.v1.common.TracingContext tracing = 10;
+    ussd.v1.common.RequestMetadata metadata = 11;
+    reserved 50 to 100;
+}
+
+message UpdateTenantResponse {
+    Tenant tenant = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message GetTenantRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata metadata = 3;
+    reserved 50 to 100;
+}
+
+message GetTenantResponse {
+    Tenant tenant = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message ListTenantsRequest {
+    ussd.v1.common.Pagination pagination = 1;
+    bool active_only = 2;
+    string search_query = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListTenantsResponse {
+    repeated Tenant tenants = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message DeleteTenantRequest {
+    string tenant_id = 1;
+    bool force = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata metadata = 4;
+    reserved 50 to 100;
+}
+
+message DeleteTenantResponse {
+    bool success = 1;
+    string message = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message RotateTenantAPIKeyRequest {
+    string tenant_id = 1;
+    bool expire_immediately = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata metadata = 4;
+    reserved 50 to 100;
+}
+
+message RotateTenantAPIKeyResponse {
+    string new_api_key = 1;
+    google.protobuf.Timestamp expires_at = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message Tenant {
+    string tenant_id = 1;
+    string name = 2;
+    string description = 3;
+    string endpoint = 4;
+    RegisterTenantRequest.TenantType type = 5;
+    int32 rate_limit_rps = 6;
+    int64 monthly_quota = 7;
+    int64 current_usage = 8;
+    bool active = 9;
+    google.protobuf.Struct configuration = 10;
+    repeated string service_codes = 11;
+    string webhook_url = 12;
+    repeated string ip_whitelist = 13;
+    google.protobuf.Timestamp created_at = 14;
+    google.protobuf.Timestamp updated_at = 15;
+    string api_key_prefix = 16;
+    reserved 50 to 100;
+}
+
+message GetCircuitBreakerStatusRequest {
+    string tenant_id = 1;
+    string route_id = 2;
+    string endpoint_url = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata metadata = 5;
+    reserved 50 to 100;
+}
+
+message CircuitBreakerStatus {
+    enum State {
+        CLOSED = 0;
+        OPEN = 1;
+        HALF_OPEN = 2;
+        reserved 50 to 100;
+    }
+
+    string identifier = 1;
+    State state = 2;
+    int32 consecutive_failures = 3;
+    double failure_rate_5m = 4;
+    google.protobuf.Timestamp opened_at = 5;
+    google.protobuf.Timestamp last_failure_at = 6;
+    google.protobuf.Timestamp last_success_at = 7;
+    int32 cooldown_remaining_seconds = 8;
+    reserved 50 to 100;
+}
+
+message ResetCircuitBreakerRequest {
+    string tenant_id = 1;
+    string route_id = 2;
+    string endpoint_url = 3;
+    string reason = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetRateLimitStatusRequest {
+    string tenant_id = 1;
+    string resource_type = 2;
+    string user_id = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata metadata = 5;
+    reserved 50 to 100;
+}
+
+message UpdateRateLimitPolicyRequest {
+    string tenant_id = 1;
+    string resource_type = 2;
+    int32 requests_per_minute = 3;
+    int32 requests_per_hour = 4;
+    int32 requests_per_day = 5;
+    int32 burst_capacity = 6;
+    bool auto_escalate = 7;
+    int32 escalation_threshold = 8;
+    double escalation_multiplier = 9;
+    int32 cooldown_seconds = 10;
+    string environment = 11;
+    ussd.v1.common.TracingContext tracing = 12;
+    ussd.v1.common.RequestMetadata metadata = 13;
+    reserved 50 to 100;
+}
+
+message RateLimitPolicy {
+    string policy_id = 1;
+    string tenant_id = 2;
+    string resource_type = 3;
+    int32 requests_per_minute = 4;
+    int32 requests_per_hour = 5;
+    int32 requests_per_day = 6;
+    int32 burst_capacity = 7;
+    bool auto_escalate = 8;
+    int32 escalation_threshold = 9;
+    double escalation_multiplier = 10;
+    int32 cooldown_seconds = 11;
+    string environment = 12;
+    google.protobuf.Timestamp created_at = 13;
+    google.protobuf.Timestamp updated_at = 14;
+    ussd.v1.common.Error error = 15;
+    reserved 50 to 100;
+}
+
+message GetSystemMetricsRequest {
+    ussd.v1.common.TracingContext tracing = 1;
+    ussd.v1.common.RequestMetadata metadata = 2;
+    reserved 50 to 100;
+}
+
+message GetSystemMetricsResponse {
+    int64 total_events = 1;
+    int64 events_per_second = 2;
+    int64 active_sessions = 3;
+    int64 active_tenants = 4;
+    double average_latency_ms = 5;
+    map<string, double> tenant_latency_ms = 6;
+    map<string, int64> tenant_event_counts = 7;
+    ussd.v1.common.Error error = 8;
+    reserved 50 to 100;
+}
+
+message GetEventStatsRequest {
+    string tenant_id = 1;
+    google.protobuf.Timestamp from_timestamp = 2;
+    google.protobuf.Timestamp to_timestamp = 3;
+    string aggregate_type = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetEventStatsResponse {
+    int64 total_events = 1;
+    map<string, int64> events_by_type = 2;
+    map<string, int64> events_by_day = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message ExecuteSagaRequest {
+    string saga_id = 1;
+    string tenant_id = 2;
+    string saga_type = 3;
+    repeated SagaStep steps = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message SagaStep {
+    string step_id = 1;
+    string service = 2;
+    string action = 3;
+    google.protobuf.Struct payload = 4;
+    string compensation_action = 5;
+    google.protobuf.Struct compensation_payload = 6;
+    int32 timeout_seconds = 7;
+    ussd.v1.common.RetryPolicy retry_policy = 8;
+    reserved 50 to 100;
+}
+
+message ExecuteSagaResponse {
+    string saga_id = 1;
+    SagaStatus status = 2;
+    repeated SagaStepResult results = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+
+    enum SagaStatus {
+        PENDING = 0;
+        RUNNING = 1;
+        COMPLETED = 2;
+        COMPENSATING = 3;
+        COMPENSATED = 4;
+        FAILED = 5;
+        CANCELLED = 6;
+        reserved 50 to 100;
+    }
+}
+
+message GetSagaStatusRequest {
+    string saga_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata metadata = 4;
+    reserved 50 to 100;
+}
+
+message SagaStatusResponse {
+    string saga_id = 1;
+    ExecuteSagaResponse.SagaStatus status = 2;
+    int32 current_step = 3;
+    int32 total_steps = 4;
+    google.protobuf.Timestamp started_at = 5;
+    google.protobuf.Timestamp completed_at = 6;
+    ussd.v1.common.Error error = 7;
+    reserved 50 to 100;
+}
+
+message CancelSagaRequest {
+    string saga_id = 1;
+    string tenant_id = 2;
+    string reason = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata metadata = 5;
+    reserved 50 to 100;
+}
+
+message SagaStepResult {
+    string step_id = 1;
+    bool success = 2;
+    google.protobuf.Struct result = 3;
+    ussd.v1.common.Error error = 4;
+    google.protobuf.Timestamp executed_at = 5;
+    google.protobuf.Timestamp compensated_at = 6;
+    reserved 50 to 100;
+}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-engine
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: payment-engine
+    app.kubernetes.io/component: rust-engine
+spec:
+  selector:
+    app.kubernetes.io/name: payment-engine
+  ports:
+    - port: 50052
+      targetPort: 50052
+      name: grpc
+  type: ClusterIP

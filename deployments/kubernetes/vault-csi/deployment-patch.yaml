@@ -1,0 +1,45 @@
+# Example deployment patch showing Vault CSI volume mounts.
+# Apply to each service deployment to mount secrets from Vault.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-orchestrator
+  namespace: open-ai-ussd-kernel
+spec:
+  template:
+    spec:
+      serviceAccountName: ussd-kernel-sa
+      containers:
+        - name: go-orchestrator
+          image: ussd-kernel/go-orchestrator:latest
+          env:
+            - name: TLS_CERT_FILE
+              value: /certs/tls.crt
+            - name: TLS_KEY_FILE
+              value: /certs/tls.key
+            - name: TLS_CA_FILE
+              value: /certs/ca.crt
+            - name: VAULT_SECRETS_PATH
+              value: /vault/secrets
+          volumeMounts:
+            - name: vault-secrets
+              mountPath: /vault/secrets
+              readOnly: true
+            - name: tls-certs
+              mountPath: /certs
+              readOnly: true
+          ports:
+            - containerPort: 50051
+              name: grpc
+            - containerPort: 9090
+              name: metrics
+      volumes:
+        - name: vault-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ussd-vault-secrets
+        - name: tls-certs
+          secret:
+            secretName: go-orchestrator-tls

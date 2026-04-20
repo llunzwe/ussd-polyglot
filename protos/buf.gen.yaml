@@ -1,0 +1,13 @@
+version: v1
+managed:
+  enabled: true
+plugins:
+  # Go
+  - plugin: go
+    out: ../go-orchestrator
+    opt:
+      - module=github.com/openai-ussd-kernel/go-orchestrator
+  - plugin: go-grpc
+    out: ../go-orchestrator
+    opt:
+      - module=github.com/openai-ussd-kernel/go-orchestrator

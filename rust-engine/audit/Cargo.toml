@@ -1,0 +1,37 @@
+[package]
+name = "audit-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ussd-kernel-common = { path = "../common" }
+tokio.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+sha2 = "0.10"
+hex = "0.4"
+hmac = "0.12"
+ed25519-dalek = "2.1"
+rand = "0.8"
+thiserror.workspace = true
+anyhow.workspace = true
+dotenvy = "0.15"
+futures = "0.3"
+tokio-stream = "0.1"
+async-trait.workspace = true
+
+[features]
+default = []
+hsm = []
+
+[dev-dependencies]
+tokio-test = "0.4"

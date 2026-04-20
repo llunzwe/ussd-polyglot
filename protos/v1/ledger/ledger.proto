@@ -1,0 +1,900 @@
+syntax = "proto3";
+
+package ussd.v1.ledger;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/ledger";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - LEDGER SERVICES (v1)
+// =============================================================================
+// Bounded Context: Immutable Ledger (CQRS Read Side)
+// Responsibility: Account balances, statements, transactions, virtual accounts,
+// liquidity positions, settlement instructions, suspense items, and chart of
+// accounts. All services are query-only; mutations flow through the event store.
+// Language: Go (orchestrator read projections) / Rust (event replay).
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Core Ledger Queries
+// -----------------------------------------------------------------------------
+
+service LedgerQueryService {
+    rpc GetAccountBalance(GetAccountBalanceRequest) returns (AccountBalance);
+    rpc GetAccountStatement(GetAccountStatementRequest) returns (GetAccountStatementResponse);
+    rpc GetTransactionById(GetTransactionByIdRequest) returns (Transaction);
+    rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+    rpc SearchTransactions(SearchTransactionsRequest) returns (ListTransactionsResponse);
+    rpc GetAccountSummary(GetAccountSummaryRequest) returns (AccountSummary);
+    rpc RebuildAccountView(RebuildAccountViewRequest) returns (RebuildAccountViewResponse);
+    rpc GetMovementLegs(GetMovementLegsRequest) returns (GetMovementLegsResponse);
+    rpc VerifyDoubleEntry(VerifyDoubleEntryRequest) returns (VerifyDoubleEntryResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// -----------------------------------------------------------------------------
+// 2. Virtual Account Queries
+// -----------------------------------------------------------------------------
+
+service VirtualAccountService {
+    rpc GetVirtualAccount(GetVirtualAccountRequest) returns (VirtualAccount);
+    rpc ListVirtualAccounts(ListVirtualAccountsRequest) returns (ListVirtualAccountsResponse);
+    rpc GetVirtualAccountSummary(GetVirtualAccountSummaryRequest) returns (GetVirtualAccountSummaryResponse);
+    rpc GetVirtualAccountTransactions(GetVirtualAccountTransactionsRequest) returns (ListTransactionsResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// -----------------------------------------------------------------------------
+// 3. Liquidity Position Queries
+// -----------------------------------------------------------------------------
+
+service LiquidityPositionService {
+    rpc GetLiquidityPosition(GetLiquidityPositionRequest) returns (LiquidityPosition);
+    rpc ListLiquidityPositions(ListLiquidityPositionsRequest) returns (ListLiquidityPositionsResponse);
+    rpc GetLiquiditySummary(GetLiquiditySummaryRequest) returns (GetLiquiditySummaryResponse);
+    rpc GetExpiringPositions(GetExpiringPositionsRequest) returns (GetExpiringPositionsResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// -----------------------------------------------------------------------------
+// 4. Settlement Queries
+// -----------------------------------------------------------------------------
+
+service SettlementService {
+    rpc GetSettlementInstruction(GetSettlementInstructionRequest) returns (SettlementInstruction);
+    rpc ListSettlementInstructions(ListSettlementInstructionsRequest) returns (ListSettlementInstructionsResponse);
+    rpc GetPendingSettlements(GetPendingSettlementsRequest) returns (GetPendingSettlementsResponse);
+    rpc GetSettlementSummary(GetSettlementSummaryRequest) returns (GetSettlementSummaryResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// -----------------------------------------------------------------------------
+// 5. Suspense Queries
+// -----------------------------------------------------------------------------
+
+service SuspenseService {
+    rpc GetSuspenseItem(GetSuspenseItemRequest) returns (SuspenseItem);
+    rpc ListSuspenseItems(ListSuspenseItemsRequest) returns (ListSuspenseItemsResponse);
+    rpc GetSuspenseAgingReport(GetSuspenseAgingReportRequest) returns (GetSuspenseAgingReportResponse);
+    rpc GetSuspenseActivityLog(GetSuspenseActivityLogRequest) returns (GetSuspenseActivityLogResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// -----------------------------------------------------------------------------
+// 6. Chart of Accounts Queries
+// -----------------------------------------------------------------------------
+
+service ChartOfAccountsService {
+    rpc GetCOAEntry(GetCOAEntryRequest) returns (COAEntry);
+    rpc ListCOAEntries(ListCOAEntriesRequest) returns (ListCOAEntriesResponse);
+    rpc GetPeriodEndBalance(GetPeriodEndBalanceRequest) returns (PeriodEndBalance);
+    rpc ListPeriodEndBalances(ListPeriodEndBalancesRequest) returns (ListPeriodEndBalancesResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+// =============================================================================
+// Shared Enumerations
+// =============================================================================
+
+enum TransactionType {
+    TRANSACTION_TYPE_UNSPECIFIED = 0;
+    CREDIT = 1;
+    DEBIT = 2;
+    HOLD = 3;
+    RELEASE = 4;
+    ADJUSTMENT = 5;
+    REVERSAL = 6;
+    FEE = 7;
+    SETTLEMENT = 8;
+    INTEREST = 9;
+    reserved 10 to 20;
+}
+
+enum AccountType {
+    ACCOUNT_TYPE_UNSPECIFIED = 0;
+    CUSTOMER = 1;
+    FLOAT = 2;
+    COMMISSION = 3;
+    ESCROW = 4;
+    SUSPENSE = 5;
+    MERCHANT = 6;
+    AGGREGATOR = 7;
+    PROVIDER = 8;
+    reserved 9 to 20;
+}
+
+enum VirtualAccountType {
+    VIRTUAL_ACCOUNT_TYPE_UNSPECIFIED = 0;
+    VIRTUAL_ACCOUNT_BUDGET = 1;
+    VIRTUAL_ACCOUNT_SAVINGS_GOAL = 2;
+    VIRTUAL_ACCOUNT_ESCROW = 3;
+    VIRTUAL_ACCOUNT_RESERVE = 4;
+    VIRTUAL_ACCOUNT_TEMPORARY_HOLD = 5;
+    VIRTUAL_ACCOUNT_ECOCASH_WALLET = 6;
+    VIRTUAL_ACCOUNT_TELECASH_WALLET = 7;
+    VIRTUAL_ACCOUNT_ONEMONEY_WALLET = 8;
+    VIRTUAL_ACCOUNT_MERCHANT_SETTLEMENT = 9;
+    reserved 10 to 20;
+}
+
+enum VirtualAccountStatus {
+    VIRTUAL_ACCOUNT_STATUS_UNSPECIFIED = 0;
+    VIRTUAL_ACCOUNT_ACTIVE = 1;
+    VIRTUAL_ACCOUNT_FROZEN = 2;
+    VIRTUAL_ACCOUNT_CLOSED = 3;
+    VIRTUAL_ACCOUNT_MATURED = 4;
+    reserved 5 to 20;
+}
+
+enum LiquidityPositionType {
+    LIQUIDITY_POSITION_TYPE_UNSPECIFIED = 0;
+    LIQUIDITY_HELD = 1;
+    LIQUIDITY_RESERVED = 2;
+    LIQUIDITY_COLLATERAL = 3;
+    LIQUIDITY_FLOAT = 4;
+    LIQUIDITY_PLEDGED = 5;
+    reserved 6 to 20;
+}
+
+enum LiquidityPositionStatus {
+    LIQUIDITY_POSITION_STATUS_UNSPECIFIED = 0;
+    LIQUIDITY_ACTIVE = 1;
+    LIQUIDITY_RELEASED = 2;
+    LIQUIDITY_EXPIRED = 3;
+    LIQUIDITY_CONFISCATED = 4;
+    LIQUIDITY_PENDING = 5;
+    reserved 6 to 20;
+}
+
+enum SettlementType {
+    SETTLEMENT_TYPE_UNSPECIFIED = 0;
+    SETTLEMENT_RTGS = 1;
+    SETTLEMENT_NET = 2;
+    SETTLEMENT_BATCH = 3;
+    SETTLEMENT_IMMEDIATE = 4;
+    SETTLEMENT_MOBILE_MONEY = 5;
+    reserved 6 to 20;
+}
+
+enum SettlementStatus {
+    SETTLEMENT_STATUS_UNSPECIFIED = 0;
+    SETTLEMENT_PENDING = 1;
+    SETTLEMENT_READY = 2;
+    SETTLEMENT_EXECUTING = 3;
+    SETTLEMENT_COMPLETED = 4;
+    SETTLEMENT_FAILED = 5;
+    SETTLEMENT_CANCELLED = 6;
+    reserved 7 to 20;
+}
+
+enum SuspenseCategory {
+    SUSPENSE_CATEGORY_UNSPECIFIED = 0;
+    SUSPENSE_UNIDENTIFIED = 1;
+    SUSPENSE_PENDING_DOCS = 2;
+    SUSPENSE_DISPUTED = 3;
+    SUSPENSE_INVESTIGATION = 4;
+    SUSPENSE_AWAITING_APPROVAL = 5;
+    reserved 6 to 20;
+}
+
+enum SuspenseStatus {
+    SUSPENSE_STATUS_UNSPECIFIED = 0;
+    SUSPENSE_OPEN = 1;
+    SUSPENSE_UNDER_REVIEW = 2;
+    SUSPENSE_PENDING_APPROVAL = 3;
+    SUSPENSE_RESOLVED = 4;
+    SUSPENSE_WRITTEN_OFF = 5;
+    reserved 6 to 20;
+}
+
+enum SuspenseResolutionType {
+    SUSPENSE_RESOLUTION_TYPE_UNSPECIFIED = 0;
+    SUSPENSE_RESOLUTION_TRANSFER = 1;
+    SUSPENSE_RESOLUTION_RETURN = 2;
+    SUSPENSE_RESOLUTION_WRITE_OFF = 3;
+    SUSPENSE_RESOLUTION_RECLASSIFY = 4;
+    SUSPENSE_RESOLUTION_ADJUST = 5;
+    reserved 6 to 20;
+}
+
+// =============================================================================
+// Core Ledger Messages
+// =============================================================================
+
+message GetAccountBalanceRequest {
+    string account_id = 1;
+    string tenant_id = 2;
+    google.protobuf.Timestamp as_of = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message AccountBalance {
+    string account_id = 1;
+    string tenant_id = 2;
+    AccountType account_type = 3;
+    ussd.v1.common.Money current_balance = 4;
+    ussd.v1.common.Money available_balance = 5;
+    ussd.v1.common.Money hold_balance = 6;
+    string currency_code = 7;
+    google.protobuf.Timestamp as_of = 8;
+    int64 version = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message GetAccountStatementRequest {
+    string account_id = 1;
+    string tenant_id = 2;
+    google.protobuf.Timestamp from_date = 3;
+    google.protobuf.Timestamp to_date = 4;
+    ussd.v1.common.Pagination pagination = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message GetAccountStatementResponse {
+    string account_id = 1;
+    repeated Transaction transactions = 2;
+    ussd.v1.common.PaginationMetadata pagination = 3;
+    ussd.v1.common.Money opening_balance = 4;
+    ussd.v1.common.Money closing_balance = 5;
+    ussd.v1.common.Money total_credits = 6;
+    ussd.v1.common.Money total_debits = 7;
+    ussd.v1.common.Money total_fees = 8;
+    int32 total_count = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message GetTransactionByIdRequest {
+    string transaction_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message Transaction {
+    string transaction_id = 1;
+    string transaction_uuid = 2;
+    string tenant_id = 3;
+    string account_id = 4;
+    TransactionType transaction_type = 5;
+    ussd.v1.common.Money amount = 6;
+    ussd.v1.common.Money balance_after = 7;
+    string description = 8;
+    string reference = 9;
+    google.protobuf.Timestamp posted_at = 10;
+    google.protobuf.Timestamp effective_at = 11;
+    string session_id = 12;
+    string payment_id = 13;
+    map<string, string> metadata = 14;
+    int64 version = 15;
+    string correlation_id = 16;
+    string idempotency_key = 17;
+    string status = 18;
+    string record_hash = 19;
+    string previous_hash = 20;
+    ussd.v1.common.Error error = 21;
+    reserved 50 to 100;
+}
+
+message ListTransactionsRequest {
+    string tenant_id = 1;
+    repeated string account_ids = 2;
+    repeated TransactionType types = 3;
+    google.protobuf.Timestamp from_date = 4;
+    google.protobuf.Timestamp to_date = 5;
+    ussd.v1.common.Pagination pagination = 6;
+    string session_id = 7;
+    string payment_id = 8;
+    ussd.v1.common.TracingContext tracing = 9;
+    ussd.v1.common.RequestMetadata request_metadata = 10;
+    reserved 50 to 100;
+}
+
+message ListTransactionsResponse {
+    repeated Transaction transactions = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Money total_credits = 4;
+    ussd.v1.common.Money total_debits = 5;
+    ussd.v1.common.Money total_fees = 6;
+    ussd.v1.common.Error error = 7;
+    reserved 50 to 100;
+}
+
+message SearchTransactionsRequest {
+    string tenant_id = 1;
+    string query = 2;
+    google.protobuf.Struct filters = 3;
+    ussd.v1.common.Pagination pagination = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetAccountSummaryRequest {
+    string tenant_id = 1;
+    google.protobuf.Timestamp as_of = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message AccountSummary {
+    string tenant_id = 1;
+    int32 total_accounts = 2;
+    repeated BalanceByType balances = 3;
+    ussd.v1.common.Money total_liabilities = 4;
+    ussd.v1.common.Money total_assets = 5;
+    google.protobuf.Timestamp as_of = 6;
+    ussd.v1.common.Error error = 7;
+    reserved 50 to 100;
+}
+
+message BalanceByType {
+    AccountType account_type = 1;
+    ussd.v1.common.Money balance = 2;
+    int32 account_count = 3;
+    reserved 50 to 100;
+}
+
+message RebuildAccountViewRequest {
+    string account_id = 1;
+    string tenant_id = 2;
+    bool dry_run = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message RebuildAccountViewResponse {
+    string account_id = 1;
+    bool success = 2;
+    int64 events_replayed = 3;
+    google.protobuf.Timestamp completed_at = 4;
+    ussd.v1.common.Money reconciled_balance = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetMovementLegsRequest {
+    string transaction_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetMovementLegsResponse {
+    string transaction_id = 1;
+    repeated MovementLeg legs = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message MovementLeg {
+    string leg_id = 1;
+    int32 leg_sequence = 2;
+    string account_id = 3;
+    string direction = 4;
+    ussd.v1.common.Money amount = 5;
+    string currency = 6;
+    string coa_code = 7;
+    string description = 8;
+    google.protobuf.Timestamp posted_at = 9;
+    reserved 50 to 100;
+}
+
+message VerifyDoubleEntryRequest {
+    string transaction_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message VerifyDoubleEntryResponse {
+    string transaction_id = 1;
+    bool is_balanced = 2;
+    ussd.v1.common.Money total_debits = 3;
+    ussd.v1.common.Money total_credits = 4;
+    ussd.v1.common.Money difference = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+// =============================================================================
+// Virtual Account Messages
+// =============================================================================
+
+message GetVirtualAccountRequest {
+    string virtual_account_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListVirtualAccountsRequest {
+    string tenant_id = 1;
+    string parent_account_id = 2;
+    repeated VirtualAccountType types = 3;
+    repeated VirtualAccountStatus statuses = 4;
+    ussd.v1.common.Pagination pagination = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message ListVirtualAccountsResponse {
+    repeated VirtualAccount virtual_accounts = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message VirtualAccount {
+    string virtual_account_id = 1;
+    string parent_account_id = 2;
+    string virtual_account_name = 3;
+    string virtual_account_number = 4;
+    VirtualAccountType virtual_account_type = 5;
+    VirtualAccountStatus status = 6;
+    ussd.v1.common.Money current_balance = 7;
+    ussd.v1.common.Money available_balance = 8;
+    ussd.v1.common.Money held_amount = 9;
+    string currency = 10;
+    ussd.v1.common.Money target_amount = 11;
+    google.protobuf.Timestamp target_date = 12;
+    double progress_percentage = 13;
+    bool auto_sweep_enabled = 14;
+    google.protobuf.Timestamp opened_at = 15;
+    google.protobuf.Timestamp closed_at = 16;
+    google.protobuf.Timestamp matured_at = 17;
+    ussd.v1.common.Error error = 18;
+    reserved 50 to 100;
+}
+
+message GetVirtualAccountSummaryRequest {
+    string parent_account_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message VirtualAccountCurrencySummary {
+    string currency = 1;
+    ussd.v1.common.Money total_balance = 2;
+    ussd.v1.common.Money total_available = 3;
+    ussd.v1.common.Money total_held = 4;
+    int32 account_count = 5;
+    reserved 50 to 100;
+}
+
+message GetVirtualAccountSummaryResponse {
+    string parent_account_id = 1;
+    repeated VirtualAccountCurrencySummary summaries = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetVirtualAccountTransactionsRequest {
+    string virtual_account_id = 1;
+    string tenant_id = 2;
+    google.protobuf.Timestamp from_date = 3;
+    google.protobuf.Timestamp to_date = 4;
+    ussd.v1.common.Pagination pagination = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+// =============================================================================
+// Liquidity Position Messages
+// =============================================================================
+
+message GetLiquidityPositionRequest {
+    string position_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListLiquidityPositionsRequest {
+    string tenant_id = 1;
+    string account_id = 2;
+    repeated LiquidityPositionType types = 3;
+    repeated LiquidityPositionStatus statuses = 4;
+    ussd.v1.common.Pagination pagination = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message ListLiquidityPositionsResponse {
+    repeated LiquidityPosition positions = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message LiquidityPosition {
+    string position_id = 1;
+    string position_reference = 2;
+    string account_id = 3;
+    string tenant_id = 4;
+    LiquidityPositionType position_type = 5;
+    ussd.v1.common.Money amount = 6;
+    string currency = 7;
+    LiquidityPositionStatus status = 8;
+    string purpose_code = 9;
+    string description = 10;
+    google.protobuf.Timestamp created_at = 11;
+    google.protobuf.Timestamp effective_date = 12;
+    google.protobuf.Timestamp expires_at = 13;
+    google.protobuf.Timestamp released_at = 14;
+    bool auto_release = 15;
+    string release_reason = 16;
+    ussd.v1.common.Error error = 17;
+    reserved 50 to 100;
+}
+
+message GetLiquiditySummaryRequest {
+    string account_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message LiquiditySummaryItem {
+    LiquidityPositionType position_type = 1;
+    string currency = 2;
+    ussd.v1.common.Money total_amount = 3;
+    int32 position_count = 4;
+    reserved 50 to 100;
+}
+
+message GetLiquiditySummaryResponse {
+    string account_id = 1;
+    repeated LiquiditySummaryItem items = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetExpiringPositionsRequest {
+    string tenant_id = 1;
+    int32 lookahead_minutes = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ExpiringPosition {
+    string position_id = 1;
+    string account_id = 2;
+    LiquidityPositionType position_type = 3;
+    ussd.v1.common.Money amount = 4;
+    string currency = 5;
+    google.protobuf.Timestamp expires_at = 6;
+    double minutes_until_expiry = 7;
+    reserved 50 to 100;
+}
+
+message GetExpiringPositionsResponse {
+    repeated ExpiringPosition positions = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+// =============================================================================
+// Settlement Messages
+// =============================================================================
+
+message GetSettlementInstructionRequest {
+    string settlement_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListSettlementInstructionsRequest {
+    string tenant_id = 1;
+    SettlementType settlement_type = 2;
+    repeated SettlementStatus statuses = 3;
+    google.protobuf.Timestamp from_date = 4;
+    google.protobuf.Timestamp to_date = 5;
+    ussd.v1.common.Pagination pagination = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message ListSettlementInstructionsResponse {
+    repeated SettlementInstruction settlements = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message SettlementInstruction {
+    string settlement_id = 1;
+    string settlement_reference = 2;
+    string tenant_id = 3;
+    string counterparty_id = 4;
+    string counterparty_name = 5;
+    SettlementType settlement_type = 6;
+    string direction = 7;
+    ussd.v1.common.Money amount = 8;
+    string currency = 9;
+    SettlementStatus status = 10;
+    google.protobuf.Timestamp scheduled_at = 11;
+    google.protobuf.Timestamp settlement_date = 12;
+    google.protobuf.Timestamp executed_at = 13;
+    google.protobuf.Timestamp completed_at = 14;
+    string settlement_account = 15;
+    string counterparty_account = 16;
+    int32 transaction_count = 17;
+    ussd.v1.common.Money gross_amount = 18;
+    ussd.v1.common.Money net_amount = 19;
+    ussd.v1.common.Money fees_amount = 20;
+    string confirmation_reference = 21;
+    string failure_reason = 22;
+    int32 retry_count = 23;
+    ussd.v1.common.Error error = 24;
+    reserved 50 to 100;
+}
+
+message GetPendingSettlementsRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message GetPendingSettlementsResponse {
+    repeated SettlementInstruction settlements = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message GetSettlementSummaryRequest {
+    string tenant_id = 1;
+    google.protobuf.Timestamp start_date = 2;
+    google.protobuf.Timestamp end_date = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message SettlementSummaryItem {
+    SettlementType settlement_type = 1;
+    string direction = 2;
+    string currency = 3;
+    ussd.v1.common.Money total_amount = 4;
+    int64 count = 5;
+    int64 completed_count = 6;
+    int64 failed_count = 7;
+    reserved 50 to 100;
+}
+
+message GetSettlementSummaryResponse {
+    repeated SettlementSummaryItem items = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+// =============================================================================
+// Suspense Messages
+// =============================================================================
+
+message GetSuspenseItemRequest {
+    string suspense_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListSuspenseItemsRequest {
+    string tenant_id = 1;
+    repeated SuspenseStatus statuses = 2;
+    repeated SuspenseCategory categories = 3;
+    string priority = 4;
+    ussd.v1.common.Pagination pagination = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message ListSuspenseItemsResponse {
+    repeated SuspenseItem items = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message SuspenseItem {
+    string suspense_id = 1;
+    string suspense_reference = 2;
+    string source_transaction_id = 3;
+    ussd.v1.common.Money amount = 4;
+    string currency = 5;
+    SuspenseCategory category = 6;
+    string priority = 7;
+    SuspenseStatus status = 8;
+    string description = 9;
+    int32 days_in_suspense = 10;
+    int32 escalation_level = 11;
+    SuspenseResolutionType resolution_type = 12;
+    google.protobuf.Timestamp resolution_date = 13;
+    string resolution_notes = 14;
+    google.protobuf.Timestamp created_at = 15;
+    ussd.v1.common.Error error = 16;
+    reserved 50 to 100;
+}
+
+message GetSuspenseAgingReportRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message SuspenseAgingBucket {
+    string category = 1;
+    int32 days_range_start = 2;
+    int32 days_range_end = 3;
+    int64 count = 4;
+    ussd.v1.common.Money total_amount = 5;
+    reserved 50 to 100;
+}
+
+message GetSuspenseAgingReportResponse {
+    repeated SuspenseAgingBucket buckets = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message GetSuspenseActivityLogRequest {
+    string suspense_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message SuspenseActivityEntry {
+    string activity_id = 1;
+    string suspense_id = 2;
+    string activity_type = 3;
+    string from_status = 4;
+    string to_status = 5;
+    string performed_by = 6;
+    string notes = 7;
+    google.protobuf.Timestamp created_at = 8;
+    reserved 50 to 100;
+}
+
+message GetSuspenseActivityLogResponse {
+    repeated SuspenseActivityEntry entries = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+// =============================================================================
+// Chart of Accounts Messages
+// =============================================================================
+
+message GetCOAEntryRequest {
+    string coa_code = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListCOAEntriesRequest {
+    string tenant_id = 1;
+    string parent_code = 2;
+    string account_category = 3;
+    ussd.v1.common.Pagination pagination = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message ListCOAEntriesResponse {
+    repeated COAEntry entries = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message COAEntry {
+    string coa_code = 1;
+    string tenant_id = 2;
+    string account_name = 3;
+    string account_category = 4;
+    string parent_code = 5;
+    int32 level = 6;
+    bool is_leaf = 7;
+    string normal_balance = 8;
+    bool is_active = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message GetPeriodEndBalanceRequest {
+    string account_id = 1;
+    string tenant_id = 2;
+    string fiscal_period_id = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListPeriodEndBalancesRequest {
+    string tenant_id = 1;
+    string fiscal_period_id = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListPeriodEndBalancesResponse {
+    repeated PeriodEndBalance balances = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message PeriodEndBalance {
+    string balance_id = 1;
+    string account_id = 2;
+    string tenant_id = 3;
+    string fiscal_period_id = 4;
+    ussd.v1.common.Money opening_balance = 5;
+    ussd.v1.common.Money closing_balance = 6;
+    ussd.v1.common.Money total_debits = 7;
+    ussd.v1.common.Money total_credits = 8;
+    string currency = 9;
+    bool is_adjusted = 10;
+    google.protobuf.Timestamp created_at = 11;
+    ussd.v1.common.Error error = 12;
+    reserved 50 to 100;
+}

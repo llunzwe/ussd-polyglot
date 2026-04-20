@@ -1,0 +1,266 @@
+syntax = "proto3";
+
+package ussd.v1.session;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/session";
+
+import "v1/common/common.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - SESSION RECONSTRUCTOR SERVICE (v1)
+// =============================================================================
+// Bounded Context: Session Management
+// Responsibility: Event-sourced session state reconstruction, integrity
+// verification, checkpoint/restore, and concurrent session handling.
+// Language: Rust (high-performance replay and Merkle proofs).
+// =============================================================================
+
+service SessionReconstructor {
+    rpc ReconstructSession(ReconstructSessionRequest) returns (ReconstructSessionResponse);
+    rpc ReconstructSessions(stream ReconstructSessionRequest) returns (stream ReconstructSessionResponse);
+    rpc GetSessionEvents(GetSessionEventsRequest) returns (stream SessionEvent);
+    rpc VerifySessionIntegrity(VerifySessionRequest) returns (VerifySessionResponse);
+    rpc GetIntegrityProof(GetIntegrityProofRequest) returns (IntegrityProof);
+    rpc CreateCheckpoint(CreateCheckpointRequest) returns (CreateCheckpointResponse);
+    rpc RestoreCheckpoint(RestoreCheckpointRequest) returns (RestoreCheckpointResponse);
+    rpc ListActiveSessions(ListActiveSessionsRequest) returns (ListActiveSessionsResponse);
+    rpc SearchSessions(SearchSessionsRequest) returns (SearchSessionsResponse);
+    rpc GetConcurrentSessions(GetConcurrentSessionsRequest) returns (GetConcurrentSessionsResponse);
+    rpc MergeSessions(MergeSessionsRequest) returns (MergeSessionsResponse);
+    rpc GetSessionMetrics(GetSessionMetricsRequest) returns (GetSessionMetricsResponse);
+    rpc InvalidateCache(InvalidateCacheRequest) returns (ussd.v1.common.Empty);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message ReconstructSessionRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    int32 max_events = 3;
+    bool include_metadata = 4;
+    bool include_payload = 5;
+    bool include_merkle_proof = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message ReconstructSessionResponse {
+    string session_id = 1;
+    google.protobuf.Struct state = 2;
+    int64 current_version = 3;
+    int32 events_replayed = 4;
+    int64 replay_time_ms = 5;
+    bool is_valid = 6;
+    string integrity_hash = 7;
+    google.protobuf.Timestamp last_activity = 8;
+    ussd.v1.common.Error error = 9;
+    IntegrityProof merkle_proof = 10;
+    reserved 50 to 100;
+}
+
+message GetSessionEventsRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    int64 from_version = 3;
+    int64 to_version = 4;
+    int32 limit = 5;
+    bool include_payload = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message SessionEvent {
+    string event_id = 1;
+    string event_type = 2;
+    int64 version = 3;
+    google.protobuf.Struct payload = 4;
+    google.protobuf.Timestamp occurred_at = 5;
+    string causation_id = 6;
+    string record_hash = 7;
+    string previous_hash = 8;
+    reserved 50 to 100;
+}
+
+message VerifySessionRequest {
+    string session_id = 1;
+    string expected_hash = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message VerifySessionResponse {
+    bool is_valid = 1;
+    string computed_hash = 2;
+    string expected_hash = 3;
+    int64 event_count = 4;
+    string broken_at_event_id = 5;
+    reserved 50 to 100;
+}
+
+message GetIntegrityProofRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    int64 event_version = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message IntegrityProof {
+    string session_id = 1;
+    int64 event_version = 2;
+    string event_hash = 3;
+    repeated string sibling_hashes = 4;
+    string merkle_root = 5;
+    google.protobuf.Timestamp proof_generated_at = 6;
+    string signature = 7;
+    reserved 50 to 100;
+}
+
+message CreateCheckpointRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    google.protobuf.Struct checkpoint_data = 3;
+    string reason = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message CreateCheckpointResponse {
+    string checkpoint_id = 1;
+    int64 version = 2;
+    google.protobuf.Timestamp checkpoint_at = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message RestoreCheckpointRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    string checkpoint_id = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message RestoreCheckpointResponse {
+    string session_id = 1;
+    google.protobuf.Struct restored_state = 2;
+    int64 restored_version = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message ListActiveSessionsRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    google.protobuf.Timestamp active_since = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListActiveSessionsResponse {
+    repeated ActiveSession sessions = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message ActiveSession {
+    string session_id = 1;
+    string phone_number = 2;
+    string tenant_id = 3;
+    string current_menu = 4;
+    google.protobuf.Timestamp started_at = 5;
+    google.protobuf.Timestamp last_activity_at = 6;
+    int64 event_count = 7;
+    bool is_concurrent = 8;
+    string parent_session_id = 9;
+    string status = 10;
+    reserved 50 to 100;
+}
+
+message SearchSessionsRequest {
+    string tenant_id = 1;
+    string query = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    google.protobuf.Timestamp from_date = 4;
+    google.protobuf.Timestamp to_date = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message SearchSessionsResponse {
+    repeated ActiveSession sessions = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetConcurrentSessionsRequest {
+    string parent_session_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetConcurrentSessionsResponse {
+    repeated ActiveSession sessions = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message MergeSessionsRequest {
+    string primary_session_id = 1;
+    repeated string secondary_session_ids = 2;
+    string tenant_id = 3;
+    string reason = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message MergeSessionsResponse {
+    string merged_session_id = 1;
+    int64 total_events_merged = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetSessionMetricsRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetSessionMetricsResponse {
+    string session_id = 1;
+    int32 response_time_ms = 2;
+    int32 input_processing_ms = 3;
+    int32 frustration_score = 4;
+    int32 retry_count = 5;
+    int32 error_count = 6;
+    google.protobuf.Timestamp last_error_at = 7;
+    ussd.v1.common.Error error = 8;
+    reserved 50 to 100;
+}
+
+message InvalidateCacheRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    string reason = 3;
+    int64 new_version = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}

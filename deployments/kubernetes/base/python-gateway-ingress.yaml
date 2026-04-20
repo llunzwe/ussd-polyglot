@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: python-gateway
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: python-gateway
+    app.kubernetes.io/component: ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ussd-kernel.example.com
+      secretName: ussd-kernel-tls
+  rules:
+    - host: ussd-kernel.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: python-gateway
+                port:
+                  number: 8000

@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'go-orchestrator'
+    static_configs:
+      - targets: ['go-orchestrator:8080']
+
+  - job_name: 'python-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['python-gateway:8000']
+
+  # Rust services emit metrics via structured logs for now.
+  # If an HTTP metrics endpoint is added later, uncomment below.
+  # - job_name: 'session-reconstructor'
+  #   static_configs:
+  #     - targets: ['session-reconstructor:9100']
+  # - job_name: 'payment-engine'
+  #   static_configs:
+  #     - targets: ['payment-engine:9101']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/rules/*.yml

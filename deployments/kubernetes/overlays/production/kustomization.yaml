@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: open-ai-ussd-kernel
+
+resources:
+  - ../../base
+  - hpa.yaml
+  - pdb.yaml
+  - ../../vault-csi/secret-provider-class.yaml
+
+commonLabels:
+  environment: production
+
+images:
+  - name: openai-ussd-kernel/session-reconstructor
+    newTag: v1.0.0
+  - name: openai-ussd-kernel/payment-engine
+    newTag: v1.0.0
+  - name: openai-ussd-kernel/go-orchestrator
+    newTag: v1.0.0
+  - name: openai-ussd-kernel/python-gateway
+    newTag: v1.0.0

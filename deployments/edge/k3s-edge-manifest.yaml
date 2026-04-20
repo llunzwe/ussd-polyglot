@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-ai-ussd-kernel-edge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: open-ai-ussd-kernel-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          hostPath:
+            path: /opt/ussd-kernel-edge/redis-data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: open-ai-ussd-kernel-edge
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-reconstructor
+  namespace: open-ai-ussd-kernel-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: session-reconstructor
+  template:
+    metadata:
+      labels:
+        app: session-reconstructor
+    spec:
+      containers:
+        - name: session-reconstructor
+          image: openai-ussd-kernel/session-reconstructor:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: DATABASE_URL
+              value: "sqlite:///data/events.db"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: session-data
+              mountPath: /data
+      volumes:
+        - name: session-data
+          hostPath:
+            path: /opt/ussd-kernel-edge/session-data
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-reconstructor
+  namespace: open-ai-ussd-kernel-edge
+spec:
+  selector:
+    app: session-reconstructor
+  ports:
+    - port: 50051
+      targetPort: 50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-sync
+  namespace: open-ai-ussd-kernel-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-sync
+  template:
+    metadata:
+      labels:
+        app: edge-sync
+    spec:
+      containers:
+        - name: edge-sync
+          image: python:3.11-slim
+          command: ["python", "-u", "/app/edge-sync.py"]
+          env:
+            - name: ORCHESTRATOR_ADDR
+              value: "cloud-orchestrator.example.com:443"
+            - name: SYNC_INTERVAL_SECONDS
+              value: "60"
+            - name: EVENT_LOG_PATH
+              value: "/data/events.jsonl"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: app
+              mountPath: /app
+              readOnly: true
+            - name: session-data
+              mountPath: /data
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        - name: app
+          hostPath:
+            path: /opt/ussd-kernel-edge/app
+            type: DirectoryOrCreate
+        - name: session-data
+          hostPath:
+            path: /opt/ussd-kernel-edge/session-data
+            type: DirectoryOrCreate
+        - name: certs
+          hostPath:
+            path: /opt/ussd-kernel-edge/certs
+            type: DirectoryOrCreate

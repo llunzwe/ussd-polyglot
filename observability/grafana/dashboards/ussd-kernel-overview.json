@@ -1,0 +1,101 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "ussd-overview",
+    "title": "USSD Kernel - Overview",
+    "tags": ["ussd", "overview"],
+    "timezone": "utc",
+    "schemaVersion": 38,
+    "refresh": "15s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Requests per Second",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (job) (rate(forward_ussd_total[1m]) or rate(ussd_requests_total[1m]))",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "P99 Latency per RPC",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum by (le, method) (rate(grpc_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "{{method}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate %",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(sum(rate(forward_ussd_total{status=\"error\"}[5m]) or rate(ussd_requests_total{status=\"error\"}[5m])) / sum(rate(forward_ussd_total[5m]) or rate(ussd_requests_total[5m]))) * 100",
+            "legendFormat": "error %"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Active Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "session_active_sessions",
+            "legendFormat": "sessions"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Payment Success Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(payment_initiated_total{status=\"success\"}[5m]) / rate(payment_initiated_total[5m])",
+            "legendFormat": "success rate"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Rate Limit Hits",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rate_limit_hits_total[5m])",
+            "legendFormat": "hits/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "DB Connection Pool Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "db_pool_active_connections",
+            "legendFormat": "active"
+          },
+          {
+            "expr": "db_pool_idle_connections",
+            "legendFormat": "idle"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "ussd-payment",
+    "title": "USSD Kernel - Payment",
+    "tags": ["ussd", "payment"],
+    "timezone": "utc",
+    "schemaVersion": 38,
+    "refresh": "15s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Payment Volume by Provider",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (provider) (rate(payment_initiated_total[1m]))",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Provider Response Latency",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(provider_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Retry Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(payment_retry_success_total[5m]) / rate(payment_retry_total[5m])",
+            "legendFormat": "retry success"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Outbox Queue Depth",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "outbox_queue_depth",
+            "legendFormat": "depth"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Duplicate Payment Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(payment_duplicate_total[5m])",
+            "legendFormat": "duplicates/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
+      }
+    ]
+  }
+}

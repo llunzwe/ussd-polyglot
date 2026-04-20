@@ -1,0 +1,175 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ussd-internal-ca
+spec:
+  ca:
+    secretName: ussd-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: go-orchestrator-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: go-orchestrator-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - go-orchestrator.open-ai-ussd-kernel.svc.cluster.local
+    - go-orchestrator.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: payment-engine-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: payment-engine-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - payment-engine.open-ai-ussd-kernel.svc.cluster.local
+    - payment-engine.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: messaging-engine-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: messaging-engine-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - messaging-engine.open-ai-ussd-kernel.svc.cluster.local
+    - messaging-engine.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: audit-service-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: audit-service-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - audit-service.open-ai-ussd-kernel.svc.cluster.local
+    - audit-service.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ledger-query-service-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: ledger-query-service-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - ledger-query-service.open-ai-ussd-kernel.svc.cluster.local
+    - ledger-query-service.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: reconciliation-engine-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: reconciliation-engine-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - reconciliation-engine.open-ai-ussd-kernel.svc.cluster.local
+    - reconciliation-engine.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: session-reconstructor-tls
+  namespace: open-ai-ussd-kernel
+spec:
+  secretName: session-reconstructor-tls
+  issuerRef:
+    name: ussd-internal-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - session-reconstructor.open-ai-ussd-kernel.svc.cluster.local
+    - session-reconstructor.open-ai-ussd-kernel.svc
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h

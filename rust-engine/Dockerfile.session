@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1
+
+# Builder stage
+FROM rust:1.88 AS builder
+
+RUN apt-get update && apt-get install -y \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PROTOC=/usr/bin/protoc
+
+WORKDIR /workspace
+
+# Copy workspace manifest files first for caching
+COPY rust-engine/Cargo.toml rust-engine/Cargo.lock ./
+COPY rust-engine/common/Cargo.toml ./common/
+COPY rust-engine/session-reconstructor/Cargo.toml ./session-reconstructor/
+COPY rust-engine/payment-engine/Cargo.toml ./payment-engine/
+COPY rust-engine/audit/Cargo.toml ./audit/
+COPY rust-engine/ledger-query-service/Cargo.toml ./ledger-query-service/
+COPY rust-engine/messaging-engine/Cargo.toml ./messaging-engine/
+COPY rust-engine/reconciliation-engine/Cargo.toml ./reconciliation-engine/
+
+# Create dummy source files to cache dependencies
+RUN mkdir -p common/src session-reconstructor/src payment-engine/src audit/src ledger-query-service/src messaging-engine/src reconciliation-engine/src
+RUN echo 'fn main() {}' > common/src/lib.rs
+RUN echo 'fn main() {}' > session-reconstructor/src/main.rs
+RUN echo 'fn main() {}' > payment-engine/src/main.rs
+RUN echo 'fn main() {}' > audit/src/main.rs
+RUN echo 'fn main() {}' > ledger-query-service/src/main.rs
+RUN echo 'fn main() {}' > messaging-engine/src/main.rs
+RUN echo 'fn main() {}' > reconciliation-engine/src/main.rs
+
+# Build to cache dependencies
+RUN cargo build --release --bin session-reconstructor
+
+# Remove dummy sources
+RUN rm -rf common/src session-reconstructor/src payment-engine/src audit/src ledger-query-service/src messaging-engine/src reconciliation-engine/src
+
+# Copy actual source code and protos
+COPY rust-engine/common/ ./common/
+COPY rust-engine/session-reconstructor/ ./session-reconstructor/
+COPY rust-engine/payment-engine/ ./payment-engine/
+COPY rust-engine/audit/ ./audit/
+COPY rust-engine/ledger-query-service/ ./ledger-query-service/
+COPY rust-engine/messaging-engine/ ./messaging-engine/
+COPY rust-engine/reconciliation-engine/ ./reconciliation-engine/
+COPY protos/ /protos/
+
+# Patch build.rs to look for protos at /protos inside Docker
+RUN sed -i 's|PathBuf::from("../../protos")|PathBuf::from("/protos")|g' common/build.rs
+
+# Build the actual binary
+RUN cargo build --release --bin session-reconstructor
+
+# Runtime stage
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /workspace/target/release/session-reconstructor /usr/local/bin/session-reconstructor
+
+EXPOSE 50051
+
+CMD ["session-reconstructor"]

@@ -1,0 +1,308 @@
+syntax = "proto3";
+
+package ussd.v1.tenant;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/tenant";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - TENANT SERVICE (v1)
+// =============================================================================
+// Bounded Context: Tenant Management
+// Responsibility: Multi-tenancy lifecycle, configuration, provider credentials,
+// rate limit policies, entitlement limits, and validation rules.
+// Language: Go.
+// =============================================================================
+
+service TenantService {
+    rpc GetTenant(GetTenantRequest) returns (Tenant);
+    rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+    rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+    rpc UpdateTenant(UpdateTenantRequest) returns (Tenant);
+    rpc DeleteTenant(DeleteTenantRequest) returns (DeleteTenantResponse);
+    rpc GetTenantConfig(GetTenantConfigRequest) returns (TenantConfig);
+    rpc UpdateTenantConfig(UpdateTenantConfigRequest) returns (TenantConfig);
+    rpc GetProviderCredentials(GetProviderCredentialsRequest) returns (ProviderCredential);
+    rpc SetProviderCredentials(SetProviderCredentialsRequest) returns (ProviderCredential);
+    rpc GetRateLimitPolicy(GetRateLimitPolicyRequest) returns (RateLimitPolicy);
+    rpc ListRateLimitPolicies(ListRateLimitPoliciesRequest) returns (ListRateLimitPoliciesResponse);
+    rpc GetEntitlementLimits(GetEntitlementLimitsRequest) returns (EntitlementLimits);
+    rpc UpdateEntitlementLimits(UpdateEntitlementLimitsRequest) returns (EntitlementLimits);
+    rpc GetValidationRules(GetValidationRulesRequest) returns (ValidationRulesResponse);
+    rpc UpdateValidationRules(UpdateValidationRulesRequest) returns (ValidationRulesResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+enum TenantStatus {
+    TENANT_STATUS_UNSPECIFIED = 0;
+    TENANT_ACTIVE = 1;
+    TENANT_SUSPENDED = 2;
+    TENANT_DEACTIVATED = 3;
+    TENANT_PENDING_ONBOARDING = 4;
+    reserved 5 to 20;
+}
+
+enum TenantType {
+    TENANT_TYPE_UNSPECIFIED = 0;
+    TENANT_GRPC = 1;
+    TENANT_REST = 2;
+    reserved 3 to 20;
+}
+
+message GetTenantRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message ListTenantsRequest {
+    ussd.v1.common.Pagination pagination = 1;
+    repeated TenantStatus statuses = 2;
+    string search = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListTenantsResponse {
+    repeated Tenant tenants = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message Tenant {
+    string tenant_id = 1;
+    string name = 2;
+    string legal_name = 3;
+    string primary_contact = 4;
+    string email = 5;
+    string phone_number = 6;
+    string country_code = 7;
+    string timezone = 8;
+    TenantStatus status = 9;
+    TenantType type = 10;
+    google.protobuf.Timestamp created_at = 11;
+    google.protobuf.Timestamp updated_at = 12;
+    string api_key_prefix = 13;
+    string webhook_url = 14;
+    int32 rate_limit_rps = 15;
+    int64 monthly_quota = 16;
+    int64 current_usage = 17;
+    ussd.v1.common.Error error = 18;
+    reserved 50 to 100;
+}
+
+message CreateTenantRequest {
+    string tenant_id = 1;
+    string name = 2;
+    string legal_name = 3;
+    string primary_contact = 4;
+    string email = 5;
+    string phone_number = 6;
+    string country_code = 7;
+    string timezone = 8;
+    TenantType type = 9;
+    string webhook_url = 10;
+    ussd.v1.common.TracingContext tracing = 11;
+    ussd.v1.common.RequestMetadata request_metadata = 12;
+    reserved 50 to 100;
+}
+
+message UpdateTenantRequest {
+    string tenant_id = 1;
+    optional string name = 2;
+    optional string legal_name = 3;
+    optional string primary_contact = 4;
+    optional string email = 5;
+    optional string phone_number = 6;
+    optional string country_code = 7;
+    optional string timezone = 8;
+    optional TenantStatus status = 9;
+    optional string webhook_url = 10;
+    ussd.v1.common.TracingContext tracing = 11;
+    ussd.v1.common.RequestMetadata request_metadata = 12;
+    reserved 50 to 100;
+}
+
+message DeleteTenantRequest {
+    string tenant_id = 1;
+    bool force = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message DeleteTenantResponse {
+    bool success = 1;
+    string message = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetTenantConfigRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message UpdateTenantConfigRequest {
+    string tenant_id = 1;
+    google.protobuf.Struct config = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message TenantConfig {
+    string tenant_id = 1;
+    google.protobuf.Struct config = 2;
+    google.protobuf.Timestamp updated_at = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message GetProviderCredentialsRequest {
+    string tenant_id = 1;
+    string provider_name = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message SetProviderCredentialsRequest {
+    string tenant_id = 1;
+    string provider_name = 2;
+    map<string, string> credentials = 3;
+    bool test_mode = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message ProviderCredential {
+    string tenant_id = 1;
+    string provider_name = 2;
+    string masked_key = 3;
+    bool test_mode = 4;
+    google.protobuf.Timestamp updated_at = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetRateLimitPolicyRequest {
+    string tenant_id = 1;
+    string resource_type = 2;
+    string environment = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListRateLimitPoliciesRequest {
+    string tenant_id = 1;
+    string environment = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ListRateLimitPoliciesResponse {
+    repeated RateLimitPolicy policies = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message RateLimitPolicy {
+    string policy_id = 1;
+    string tenant_id = 2;
+    string resource_type = 3;
+    int32 requests_per_minute = 4;
+    int32 requests_per_hour = 5;
+    int32 requests_per_day = 6;
+    int32 burst_capacity = 7;
+    bool auto_escalate = 8;
+    int32 escalation_threshold = 9;
+    double escalation_multiplier = 10;
+    int32 cooldown_seconds = 11;
+    string environment = 12;
+    google.protobuf.Timestamp created_at = 13;
+    google.protobuf.Timestamp updated_at = 14;
+    ussd.v1.common.Error error = 15;
+    reserved 50 to 100;
+}
+
+message GetEntitlementLimitsRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message UpdateEntitlementLimitsRequest {
+    string tenant_id = 1;
+    int64 max_monthly_transactions = 2;
+    int64 max_monthly_amount_cents = 3;
+    int32 max_concurrent_sessions = 4;
+    int32 max_api_keys = 5;
+    int32 max_webhooks = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message EntitlementLimits {
+    string tenant_id = 1;
+    int64 max_monthly_transactions = 2;
+    ussd.v1.common.Money max_monthly_amount = 3;
+    int32 max_concurrent_sessions = 4;
+    int32 max_api_keys = 5;
+    int32 max_webhooks = 6;
+    int64 current_monthly_transactions = 7;
+    ussd.v1.common.Money current_monthly_amount = 8;
+    google.protobuf.Timestamp reset_at = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message GetValidationRulesRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message ValidationRule {
+    string rule_id = 1;
+    string rule_name = 2;
+    string entity_type = 3;
+    string field_path = 4;
+    string operator = 5;
+    string value = 6;
+    string error_message = 7;
+    bool is_active = 8;
+    reserved 50 to 100;
+}
+
+message ValidationRulesResponse {
+    string tenant_id = 1;
+    repeated ValidationRule rules = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message UpdateValidationRulesRequest {
+    string tenant_id = 1;
+    repeated ValidationRule rules = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}

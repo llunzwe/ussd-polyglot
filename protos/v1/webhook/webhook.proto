@@ -1,0 +1,223 @@
+syntax = "proto3";
+
+package ussd.v1.webhook;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/webhook";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - WEBHOOK SERVICE (v1)
+// =============================================================================
+// Bounded Context: Event Delivery
+// Responsibility: Tenant webhook registration, event delivery, retry
+// management, delivery logs, and replay.
+// Language: Go / Python.
+// =============================================================================
+
+service WebhookService {
+    rpc RegisterWebhook(RegisterWebhookRequest) returns (Webhook);
+    rpc GetWebhook(GetWebhookRequest) returns (Webhook);
+    rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+    rpc UpdateWebhook(UpdateWebhookRequest) returns (Webhook);
+    rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+    rpc DeliverEvent(DeliverEventRequest) returns (DeliveryResponse);
+    rpc GetDeliveryLog(GetDeliveryLogRequest) returns (DeliveryLog);
+    rpc ListDeliveryLogs(ListDeliveryLogsRequest) returns (ListDeliveryLogsResponse);
+    rpc ReplayEvent(ReplayEventRequest) returns (DeliveryResponse);
+    rpc TestWebhook(TestWebhookRequest) returns (DeliveryResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+enum WebhookEventType {
+    WEBHOOK_EVENT_UNSPECIFIED = 0;
+    PAYMENT_COMPLETED = 1;
+    PAYMENT_FAILED = 2;
+    SESSION_STARTED = 3;
+    SESSION_ENDED = 4;
+    DISPUTE_OPENED = 5;
+    DISPUTE_RESOLVED = 6;
+    SETTLEMENT_GENERATED = 7;
+    RECONCILIATION_COMPLETED = 8;
+    TENANT_CONFIG_UPDATED = 9;
+    ALL_EVENTS = 99;
+    reserved 100 to 120;
+}
+
+enum WebhookStatus {
+    WEBHOOK_STATUS_UNSPECIFIED = 0;
+    ACTIVE = 1;
+    PAUSED = 2;
+    DISABLED = 3;
+    PENDING_VERIFICATION = 4;
+    reserved 5 to 20;
+}
+
+message RegisterWebhookRequest {
+    string tenant_id = 1;
+    string url = 2;
+    repeated WebhookEventType event_types = 3;
+    map<string, string> headers = 4;
+    string secret = 5;
+    int32 timeout_seconds = 6;
+    ussd.v1.common.RetryPolicy retry_policy = 7;
+    ussd.v1.common.TracingContext tracing = 8;
+    ussd.v1.common.RequestMetadata request_metadata = 9;
+    reserved 50 to 100;
+}
+
+message GetWebhookRequest {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListWebhooksRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    repeated WebhookEventType event_types = 3;
+    repeated WebhookStatus statuses = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message ListWebhooksResponse {
+    repeated Webhook webhooks = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message UpdateWebhookRequest {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    string url = 3;
+    repeated WebhookEventType event_types = 4;
+    map<string, string> headers = 5;
+    string secret = 6;
+    int32 timeout_seconds = 7;
+    ussd.v1.common.RetryPolicy retry_policy = 8;
+    WebhookStatus status = 9;
+    ussd.v1.common.TracingContext tracing = 10;
+    ussd.v1.common.RequestMetadata request_metadata = 11;
+    reserved 50 to 100;
+}
+
+message DeleteWebhookRequest {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message DeleteWebhookResponse {
+    bool success = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message Webhook {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    string url = 3;
+    repeated WebhookEventType event_types = 4;
+    map<string, string> headers = 5;
+    int32 timeout_seconds = 6;
+    ussd.v1.common.RetryPolicy retry_policy = 7;
+    WebhookStatus status = 8;
+    google.protobuf.Timestamp created_at = 9;
+    google.protobuf.Timestamp updated_at = 10;
+    int32 success_count = 11;
+    int32 failure_count = 12;
+    ussd.v1.common.Error error = 13;
+    reserved 50 to 100;
+}
+
+message DeliverEventRequest {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    string event_id = 3;
+    WebhookEventType event_type = 4;
+    google.protobuf.Struct payload = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message DeliveryResponse {
+    string delivery_id = 1;
+    bool accepted = 2;
+    int32 status_code = 3;
+    string response_body = 4;
+    google.protobuf.Timestamp delivered_at = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetDeliveryLogRequest {
+    string delivery_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ListDeliveryLogsRequest {
+    string tenant_id = 1;
+    string webhook_id = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    repeated WebhookEventType event_types = 4;
+    google.protobuf.Timestamp from_date = 5;
+    google.protobuf.Timestamp to_date = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message ListDeliveryLogsResponse {
+    repeated DeliveryLog logs = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message DeliveryLog {
+    string delivery_id = 1;
+    string webhook_id = 2;
+    string event_id = 3;
+    WebhookEventType event_type = 4;
+    bool success = 5;
+    int32 status_code = 6;
+    string response_body = 7;
+    string error_message = 8;
+    int32 attempt_count = 9;
+    google.protobuf.Timestamp last_attempt_at = 10;
+    google.protobuf.Timestamp next_retry_at = 11;
+    reserved 50 to 100;
+}
+
+message ReplayEventRequest {
+    string delivery_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message TestWebhookRequest {
+    string webhook_id = 1;
+    string tenant_id = 2;
+    WebhookEventType event_type = 3;
+    google.protobuf.Struct payload = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}

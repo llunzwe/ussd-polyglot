@@ -1,0 +1,1 @@
+"""REST API infrastructure adapters."""

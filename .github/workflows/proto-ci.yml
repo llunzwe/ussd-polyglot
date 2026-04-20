@@ -1,0 +1,24 @@
+name: Proto CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'protos/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'protos/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-action@v1
+        with:
+          lint: true
+          breaking: true
+          against: 'https://github.com/${{ github.repository }}.git#branch=main'

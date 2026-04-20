@@ -1,0 +1,225 @@
+syntax = "proto3";
+
+package ussd.v1.audit;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/audit";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - AUDIT SERVICE (v1)
+// =============================================================================
+// Bounded Context: Audit & Integrity
+// Responsibility: Tamper-evident audit log, Merkle proofs, cryptographic batch
+// integrity verification, hash chain validation, and signed audit reports.
+// Language: Rust (cryptographic performance).
+// =============================================================================
+
+service AuditService {
+    rpc GetMerkleProof(GetMerkleProofRequest) returns (GetMerkleProofResponse);
+    rpc GetLedgerChecksum(GetLedgerChecksumRequest) returns (GetLedgerChecksumResponse);
+    rpc VerifyBatchIntegrity(VerifyBatchIntegrityRequest) returns (VerifyBatchIntegrityResponse);
+    rpc StreamAuditEvents(StreamAuditEventsRequest) returns (stream ussd.v1.common.EventEnvelope);
+    rpc VerifyTransactionChain(VerifyTransactionChainRequest) returns (TransactionChainReport);
+    rpc GetAuditTrail(GetAuditTrailRequest) returns (stream AuditEntry);
+    rpc GetAuditReport(GetAuditReportRequest) returns (GetAuditReportResponse);
+    rpc ExportAuditReport(ExportAuditReportRequest) returns (ExportAuditReportResponse);
+    rpc GetSigningKeys(GetSigningKeysRequest) returns (GetSigningKeysResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message GetMerkleProofRequest {
+    oneof target {
+        string transaction_id = 1;
+        string event_id = 2;
+        int64 sequence_number = 3;
+    }
+    string tenant_id = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetMerkleProofResponse {
+    string event_id = 1;
+    bytes merkle_root = 2;
+    repeated bytes proof_hashes = 3;
+    google.protobuf.Timestamp computed_at = 4;
+    bool valid = 5;
+    ussd.v1.common.Error error = 6;
+    string target_id = 7;
+    int64 sequence_number = 8;
+    int64 block_number = 9;
+    string signature = 10;
+    string signer_key_id = 11;
+    reserved 50 to 100;
+}
+
+message GetLedgerChecksumRequest {
+    google.protobuf.Timestamp from_date = 1;
+    google.protobuf.Timestamp to_date = 2;
+    string tenant_id = 3;
+    bool include_signature = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetLedgerChecksumResponse {
+    bytes merkle_root = 1;
+    int64 event_count = 2;
+    google.protobuf.Timestamp computed_at = 3;
+    string checksum_id = 4;
+    int64 latest_sequence_number = 5;
+    int64 total_events = 6;
+    string signature = 7;
+    string signer_key_id = 8;
+    ussd.v1.common.Error error = 9;
+    reserved 50 to 100;
+}
+
+message VerifyBatchIntegrityRequest {
+    int64 start_event_id = 1;
+    int64 end_event_id = 2;
+    bytes expected_root = 3;
+    string tenant_id = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message VerifyBatchIntegrityResponse {
+    bool valid = 1;
+    string computed_root = 2;
+    ussd.v1.common.Error error = 3;
+    google.protobuf.Timestamp period_start = 4;
+    google.protobuf.Timestamp period_end = 5;
+    int64 total_transactions = 6;
+    int64 verified_transactions = 7;
+    int64 failed_transactions = 8;
+    bool is_fully_valid = 9;
+    string previous_batch_hash = 10;
+    repeated IntegrityViolation violations = 11;
+    reserved 50 to 100;
+}
+
+message IntegrityViolation {
+    string transaction_id = 1;
+    string expected_hash = 2;
+    string actual_hash = 3;
+    string violation_type = 4;
+    reserved 50 to 100;
+}
+
+message VerifyTransactionChainRequest {
+    string transaction_id = 1;
+    int32 max_depth = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message TransactionChainReport {
+    string start_transaction_id = 1;
+    bool is_valid = 2;
+    int32 chain_length = 3;
+    string broken_at_transaction_id = 4;
+    string expected_hash = 5;
+    string actual_hash = 6;
+    reserved 50 to 100;
+}
+
+message GetAuditTrailRequest {
+    string record_id = 1;
+    string table_name = 2;
+    string tenant_id = 3;
+    ussd.v1.common.Pagination pagination = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message AuditEntry {
+    string audit_id = 1;
+    string event_type = 2;
+    string action = 3;
+    ussd.v1.common.AuditMetadata actor = 4;
+    google.protobuf.Struct old_data = 5;
+    google.protobuf.Struct new_data = 6;
+    google.protobuf.Timestamp timestamp = 7;
+    string record_hash = 8;
+    string previous_hash = 9;
+    reserved 50 to 100;
+}
+
+message StreamAuditEventsRequest {
+    google.protobuf.Timestamp from_timestamp = 1;
+    repeated string event_types = 2;
+    string tenant_id = 3;
+    string resume_token = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetAuditReportRequest {
+    string tenant_id = 1;
+    google.protobuf.Timestamp from_date = 2;
+    google.protobuf.Timestamp to_date = 3;
+    repeated string event_types = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetAuditReportResponse {
+    string report_id = 1;
+    int64 total_events = 2;
+    repeated string included_event_types = 3;
+    google.protobuf.Timestamp generated_at = 4;
+    string checksum = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message ExportAuditReportRequest {
+    string report_id = 1;
+    string tenant_id = 2;
+    ExportFormat format = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+
+    enum ExportFormat {
+        JSON = 0;
+        PDF = 1;
+        CSV = 2;
+        XML = 3;
+        reserved 4 to 20;
+    }
+}
+
+message ExportAuditReportResponse {
+    string report_id = 1;
+    string download_url = 2;
+    string checksum = 3;
+    bytes signature = 4;
+    google.protobuf.Timestamp expires_at = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetSigningKeysRequest {
+    bool active_only = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message GetSigningKeysResponse {
+    repeated ussd.v1.common.SigningKeyInfo keys = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}

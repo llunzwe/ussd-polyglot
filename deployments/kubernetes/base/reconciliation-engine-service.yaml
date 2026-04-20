@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: reconciliation-engine
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: reconciliation-engine
+    app.kubernetes.io/component: rust-engine
+spec:
+  selector:
+    app.kubernetes.io/name: reconciliation-engine
+  ports:
+    - port: 50058
+      targetPort: 50058
+      name: grpc
+  type: ClusterIP

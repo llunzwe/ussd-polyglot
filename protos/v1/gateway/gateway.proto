@@ -1,0 +1,294 @@
+syntax = "proto3";
+
+package ussd.v1.gateway;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/gateway";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - USSD GATEWAY SERVICE (v1)
+// =============================================================================
+// Bounded Context: USSD Gateway
+// Responsibility: Africa's Talking integration point. Receives USSD requests
+// from external gateway, returns formatted responses, manages provider adapters,
+// batch USSD campaigns, and webhook ingestion.
+// Language: Python (Flask/FastAPI handler).
+// =============================================================================
+
+service USSDGateway {
+  rpc ReceiveUSSD(USSDRequest) returns (USSDResponse);
+  rpc SendBatchUSSD(SendBatchUSSDRequest) returns (ussd.v1.common.BatchOperationResult);
+  rpc GetBatchStatus(GetBatchStatusRequest) returns (BatchStatusResponse);
+  rpc ProcessWebhook(ProcessWebhookRequest) returns (ProcessWebhookResponse);
+  rpc ValidateWebhookSignature(ValidateWebhookSignatureRequest) returns (ValidateWebhookSignatureResponse);
+  rpc GetProviderAdapter(GetProviderAdapterRequest) returns (ProviderAdapter);
+  rpc ListProviderAdapters(ListProviderAdaptersRequest) returns (ListProviderAdaptersResponse);
+  rpc GetWebhookLog(GetWebhookLogRequest) returns (WebhookLogEntry);
+  rpc ListWebhookLogs(ListWebhookLogsRequest) returns (ListWebhookLogsResponse);
+  rpc GetDeadLetterQueue(GetDeadLetterQueueRequest) returns (ListDeadLetterQueueResponse);
+  rpc ReplayDeadLetter(ReplayDeadLetterRequest) returns (ReplayDeadLetterResponse);
+  rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+enum ProviderCategory {
+  PROVIDER_CATEGORY_UNSPECIFIED = 0;
+  USSD_GATEWAY = 1;
+  MOBILE_MONEY = 2;
+  PAYMENT_PROCESSOR = 3;
+  SMS_GATEWAY = 4;
+  WHATSAPP_GATEWAY = 5;
+  reserved 6 to 20;
+}
+
+enum ZimbabweMNO {
+  ZIMBABWE_MNO_UNSPECIFIED = 0;
+  ECONET = 1;
+  NETONE = 2;
+  TELECEL = 3;
+  reserved 4 to 20;
+}
+
+message USSDRequest {
+  string session_id = 1;
+  string phone_number = 2;
+  string text = 3;
+  string service_code = 4;
+  string network_code = 5;
+  string at_session_id = 6;
+  string at_network_code = 7;
+  ussd.v1.common.TracingContext tracing = 8;
+  ussd.v1.common.RequestMetadata metadata = 9;
+  reserved 50 to 100;
+}
+
+message USSDResponse {
+  enum ResponseType {
+    CON = 0;
+    END = 1;
+    reserved 50 to 100;
+  }
+
+  ResponseType type = 1;
+  string message = 2;
+  repeated string options = 3;
+  bool ai_personalized = 4;
+  string original_language = 5;
+  string detected_language = 6;
+  ussd.v1.common.TracingContext tracing = 7;
+  ussd.v1.common.RequestMetadata metadata = 8;
+  reserved 50 to 100;
+}
+
+message BatchUSSDRequest {
+  string phone_number = 1;
+  string service_code = 2;
+  string message = 3;
+  map<string, string> metadata = 4;
+  reserved 50 to 100;
+}
+
+message SendBatchUSSDRequest {
+  string batch_id = 1;
+  string tenant_id = 2;
+  string adapter_id = 3;
+  repeated BatchUSSDRequest requests = 4;
+  ussd.v1.common.TracingContext tracing = 5;
+  ussd.v1.common.RequestMetadata metadata = 6;
+  reserved 50 to 100;
+}
+
+message GetBatchStatusRequest {
+  string batch_id = 1;
+  string tenant_id = 2;
+  ussd.v1.common.TracingContext tracing = 3;
+  ussd.v1.common.RequestMetadata metadata = 4;
+  reserved 50 to 100;
+}
+
+message BatchStatusResponse {
+  string batch_id = 1;
+  string status = 2;
+  int32 total_count = 3;
+  int32 processed_count = 4;
+  int32 success_count = 5;
+  int32 failure_count = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+  ussd.v1.common.Error error = 9;
+  reserved 50 to 100;
+}
+
+message ProcessWebhookRequest {
+  string provider_code = 1;
+  string request_method = 2;
+  string request_path = 3;
+  map<string, string> request_headers = 4;
+  google.protobuf.Struct request_body = 5;
+  string raw_payload = 6;
+  ussd.v1.common.TracingContext tracing = 7;
+  ussd.v1.common.RequestMetadata metadata = 8;
+  reserved 50 to 100;
+}
+
+message ProcessWebhookResponse {
+  bool accepted = 1;
+  string message = 2;
+  string session_id = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message ValidateWebhookSignatureRequest {
+  string provider_code = 1;
+  string payload = 2;
+  string signature = 3;
+  string secret = 4;
+  reserved 50 to 100;
+}
+
+message ValidateWebhookSignatureResponse {
+  bool valid = 1;
+  ussd.v1.common.Error error = 2;
+  reserved 50 to 100;
+}
+
+message GetProviderAdapterRequest {
+  string adapter_id = 1;
+  ussd.v1.common.TracingContext tracing = 2;
+  ussd.v1.common.RequestMetadata metadata = 3;
+  reserved 50 to 100;
+}
+
+message ListProviderAdaptersRequest {
+  ProviderCategory category = 1;
+  string environment = 2;
+  bool active_only = 3;
+  ussd.v1.common.Pagination pagination = 4;
+  ussd.v1.common.TracingContext tracing = 5;
+  ussd.v1.common.RequestMetadata metadata = 6;
+  reserved 50 to 100;
+}
+
+message ListProviderAdaptersResponse {
+  repeated ProviderAdapter adapters = 1;
+  ussd.v1.common.PaginationMetadata pagination = 2;
+  ussd.v1.common.Error error = 3;
+  reserved 50 to 100;
+}
+
+message ProviderAdapter {
+  string adapter_id = 1;
+  string provider_name = 2;
+  string provider_code = 3;
+  ProviderCategory provider_category = 4;
+  bool is_zimbabwe_mobile_money = 5;
+  ZimbabweMNO zimbabwe_mno = 6;
+  string api_base_url = 7;
+  string api_version = 8;
+  string webhook_url = 9;
+  int32 max_retries = 10;
+  int32 retry_delay_ms = 11;
+  int32 circuit_breaker_threshold = 12;
+  int32 circuit_breaker_timeout_sec = 13;
+  google.protobuf.Struct provider_config = 14;
+  bool is_active = 15;
+  bool is_default = 16;
+  string environment = 17;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
+  ussd.v1.common.Error error = 20;
+  reserved 50 to 100;
+}
+
+message GetWebhookLogRequest {
+  string log_id = 1;
+  ussd.v1.common.TracingContext tracing = 2;
+  ussd.v1.common.RequestMetadata metadata = 3;
+  reserved 50 to 100;
+}
+
+message ListWebhookLogsRequest {
+  string adapter_id = 1;
+  string session_id = 2;
+  bool success_only = 3;
+  google.protobuf.Timestamp from_date = 4;
+  google.protobuf.Timestamp to_date = 5;
+  ussd.v1.common.Pagination pagination = 6;
+  ussd.v1.common.TracingContext tracing = 7;
+  ussd.v1.common.RequestMetadata metadata = 8;
+  reserved 50 to 100;
+}
+
+message ListWebhookLogsResponse {
+  repeated WebhookLogEntry logs = 1;
+  ussd.v1.common.PaginationMetadata pagination = 2;
+  ussd.v1.common.Error error = 3;
+  reserved 50 to 100;
+}
+
+message WebhookLogEntry {
+  string log_id = 1;
+  string adapter_id = 2;
+  string session_id = 3;
+  string request_method = 4;
+  string request_path = 5;
+  map<string, string> request_headers = 6;
+  google.protobuf.Struct request_body = 7;
+  int32 response_status = 8;
+  google.protobuf.Struct response_body = 9;
+  int32 response_time_ms = 10;
+  bool is_success = 11;
+  string error_message = 12;
+  string idempotency_key = 13;
+  google.protobuf.Timestamp created_at = 14;
+  reserved 50 to 100;
+}
+
+message GetDeadLetterQueueRequest {
+  string adapter_id = 1;
+  bool unresolved_only = 2;
+  ussd.v1.common.Pagination pagination = 3;
+  ussd.v1.common.TracingContext tracing = 4;
+  ussd.v1.common.RequestMetadata metadata = 5;
+  reserved 50 to 100;
+}
+
+message ListDeadLetterQueueResponse {
+  repeated DeadLetterEntry entries = 1;
+  ussd.v1.common.PaginationMetadata pagination = 2;
+  ussd.v1.common.Error error = 3;
+  reserved 50 to 100;
+}
+
+message DeadLetterEntry {
+  string dlq_id = 1;
+  string adapter_id = 2;
+  string original_log_id = 3;
+  google.protobuf.Struct request_payload = 4;
+  string failure_reason = 5;
+  int32 failure_count = 6;
+  google.protobuf.Timestamp last_failure_at = 7;
+  google.protobuf.Timestamp next_retry_at = 8;
+  int32 max_retries = 9;
+  bool is_resolved = 10;
+  string resolution_action = 11;
+  reserved 50 to 100;
+}
+
+message ReplayDeadLetterRequest {
+  string dlq_id = 1;
+  ussd.v1.common.TracingContext tracing = 2;
+  ussd.v1.common.RequestMetadata metadata = 3;
+  reserved 50 to 100;
+}
+
+message ReplayDeadLetterResponse {
+  bool success = 1;
+  string message = 2;
+  string new_log_id = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}

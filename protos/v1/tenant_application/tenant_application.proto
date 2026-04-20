@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package ussd.v1.tenant_application;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/tenant_application";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - TENANT APPLICATION SERVICE (v1)
+// =============================================================================
+// Bounded Context: Tenant USSD Application
+// Responsibility: This service is implemented BY tenant applications so that
+// the Go Orchestrator can call them to handle USSD menu flows, payment
+// confirmations, and health checks.
+// Language: Any (Go, Python, Node, Java, etc.).
+// =============================================================================
+
+service TenantUSSDApp {
+    rpc HandleMenu(MenuRequest) returns (MenuResponse);
+    rpc HandlePaymentConfirmation(PaymentConfirmationRequest) returns (MenuResponse);
+    rpc HandleError(ErrorContextRequest) returns (MenuResponse);
+    rpc GetTenantConfig(GetTenantConfigRequest) returns (TenantAppConfig);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message MenuRequest {
+    string session_id = 1;
+    string phone_number = 2;
+    string user_input = 3;
+    string current_menu = 4;
+    google.protobuf.Struct session_state = 5;
+    string tenant_id = 6;
+    string language_code = 7;
+    ussd.v1.common.SessionContext session_context = 8;
+    PaymentResult payment_result = 9;
+    ErrorContext error_context = 10;
+    ussd.v1.common.TracingContext tracing = 11;
+    ussd.v1.common.RequestMetadata metadata = 12;
+    reserved 50 to 100;
+}
+
+message MenuResponse {
+    enum ResponseType {
+        CON = 0;
+        END = 1;
+        reserved 50 to 100;
+    }
+
+    ResponseType type = 1;
+    string message = 2;
+    repeated MenuOption options = 3;
+    string next_menu = 4;
+    google.protobuf.Struct updated_state = 5;
+    bool use_ai_personalization = 6;
+    string ai_prompt = 7;
+    PaymentRequest payment = 8;
+    string end_session_reason = 9;
+    ussd.v1.common.Error error = 10;
+    reserved 50 to 100;
+}
+
+message MenuOption {
+    string id = 1;
+    string label = 2;
+    string description = 3;
+    string next_menu = 4;
+    string action = 5;
+    bool default_option = 6;
+    reserved 50 to 100;
+}
+
+message PaymentRequest {
+    string provider = 1;
+    ussd.v1.common.Money amount = 2;
+    string reference = 3;
+    string description = 4;
+    string phone_number = 5;
+    reserved 50 to 100;
+}
+
+message PaymentResult {
+    string payment_id = 1;
+    string status = 2;
+    ussd.v1.common.Money amount = 3;
+    string provider_reference = 4;
+    google.protobuf.Timestamp completed_at = 5;
+    string failure_reason = 6;
+    reserved 50 to 100;
+}
+
+message ErrorContext {
+    ussd.v1.common.ErrorCode code = 1;
+    string message = 2;
+    string recoverable_menu = 3;
+    reserved 50 to 100;
+}
+
+message ErrorContextRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    ErrorContext error = 3;
+    google.protobuf.Struct session_state = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message PaymentConfirmationRequest {
+    string session_id = 1;
+    string tenant_id = 2;
+    PaymentResult payment_result = 3;
+    google.protobuf.Struct session_state = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetTenantConfigRequest {
+    string tenant_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata metadata = 3;
+    reserved 50 to 100;
+}
+
+message TenantAppConfig {
+    string tenant_id = 1;
+    google.protobuf.Struct config = 2;
+    repeated string supported_languages = 3;
+    repeated string supported_providers = 4;
+    int32 max_menu_length = 5;
+    bool supports_ai_personalization = 6;
+    ussd.v1.common.Error error = 7;
+    reserved 50 to 100;
+}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: audit-service
+    app.kubernetes.io/component: rust-engine
+spec:
+  selector:
+    app.kubernetes.io/name: audit-service
+  ports:
+    - port: 50054
+      targetPort: 50054
+      name: grpc
+  type: ClusterIP

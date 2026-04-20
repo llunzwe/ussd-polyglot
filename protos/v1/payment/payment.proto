@@ -1,0 +1,668 @@
+syntax = "proto3";
+
+package ussd.v1.payment;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/payment";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - PAYMENT ENGINE SERVICE (v1)
+// =============================================================================
+// Bounded Context: Payment Processing
+// Responsibility: Mobile money integration (EcoCash, OneMoney, TeleCash),
+// disbursements, refunds, reversals, settlements, disputes, and provider
+// callback handling.
+// Language: Rust (high-performance financial engine).
+// =============================================================================
+
+service PaymentEngine {
+    rpc InitiatePayment(InitiatePaymentRequest) returns (InitiatePaymentResponse);
+    rpc PreviewPayment(PreviewPaymentRequest) returns (PreviewPaymentResponse);
+    rpc BulkInitiatePayment(BulkInitiatePaymentRequest) returns (ussd.v1.common.BatchOperationResult);
+    rpc InitiateDisbursement(InitiateDisbursementRequest) returns (InitiateDisbursementResponse);
+    rpc BulkInitiateDisbursement(BulkInitiateDisbursementRequest) returns (ussd.v1.common.BatchOperationResult);
+    rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+    rpc GetPaymentDetails(GetPaymentDetailsRequest) returns (GetPaymentDetailsResponse);
+    rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+    rpc ReversePayment(ReversePaymentRequest) returns (ReversePaymentResponse);
+    rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse);
+    rpc GetPaymentAnalytics(GetPaymentAnalyticsRequest) returns (GetPaymentAnalyticsResponse);
+    rpc ValidatePhoneNumber(ValidatePhoneNumberRequest) returns (ValidatePhoneNumberResponse);
+    rpc GetProviderBalance(GetProviderBalanceRequest) returns (GetProviderBalanceResponse);
+    rpc GetProviderCapabilities(GetProviderCapabilitiesRequest) returns (GetProviderCapabilitiesResponse);
+    rpc ProcessCallback(ProcessCallbackRequest) returns (ProcessCallbackResponse);
+    rpc ReportDispute(ReportDisputeRequest) returns (ReportDisputeResponse);
+    rpc UpdateDispute(UpdateDisputeRequest) returns (Dispute);
+    rpc UploadDisputeEvidence(UploadDisputeEvidenceRequest) returns (UploadDisputeEvidenceResponse);
+    rpc GetDisputeStatus(GetDisputeStatusRequest) returns (Dispute);
+    rpc ListDisputes(ListDisputesRequest) returns (ListDisputesResponse);
+    rpc GenerateSettlementFile(GenerateSettlementFileRequest) returns (GenerateSettlementFileResponse);
+    rpc GetSettlementFile(GetSettlementFileRequest) returns (SettlementFile);
+    rpc ListSettlementFiles(ListSettlementFilesRequest) returns (ListSettlementFilesResponse);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+enum MobileMoneyProvider {
+    PROVIDER_UNSPECIFIED = 0;
+    ECOCASH = 1;
+    ONEMONEY = 2;
+    TELECASH = 3;
+    MTN_MOMO = 4;
+    AIRTEL_MONEY = 5;
+    reserved 6 to 20;
+}
+
+enum PaymentStatus {
+    PAYMENT_STATUS_UNSPECIFIED = 0;
+    PAYMENT_PENDING = 1;
+    PAYMENT_PROCESSING = 2;
+    PAYMENT_REQUIRES_CONFIRMATION = 3;
+    PAYMENT_COMPLETED = 4;
+    PAYMENT_FAILED = 5;
+    PAYMENT_CANCELLED = 6;
+    PAYMENT_REFUNDED = 7;
+    PAYMENT_PARTIALLY_REFUNDED = 8;
+    PAYMENT_DISPUTED = 9;
+    PAYMENT_EXPIRED = 10;
+    PAYMENT_REVERSED = 11;
+    reserved 12 to 20;
+}
+
+enum PaymentType {
+    PAYMENT_TYPE_UNSPECIFIED = 0;
+    PAYMENT_RECEIVE = 1;
+    PAYMENT_DISBURSE = 2;
+    PAYMENT_REFUND = 3;
+    PAYMENT_REVERSAL = 4;
+    reserved 5 to 20;
+}
+
+enum DisputeStatus {
+    DISPUTE_STATUS_UNSPECIFIED = 0;
+    DISPUTE_OPEN = 1;
+    DISPUTE_UNDER_REVIEW = 2;
+    DISPUTE_EVIDENCE_REQUIRED = 3;
+    DISPUTE_ACCEPTED = 4;
+    DISPUTE_REJECTED = 5;
+    DISPUTE_RESOLVED = 6;
+    DISPUTE_ESCALATED = 7;
+    reserved 8 to 20;
+}
+
+enum DisputeReason {
+    DISPUTE_REASON_UNSPECIFIED = 0;
+    DISPUTE_DUPLICATE_CHARGE = 1;
+    DISPUTE_FRAUDULENT = 2;
+    DISPUTE_GOODS_NOT_RECEIVED = 3;
+    DISPUTE_SERVICE_NOT_RENDERED = 4;
+    DISPUTE_AMOUNT_INCORRECT = 5;
+    DISPUTE_CREDIT_NOT_PROCESSED = 6;
+    DISPUTE_OTHER = 7;
+    reserved 8 to 20;
+}
+
+message InitiatePaymentRequest {
+    string payment_id = 1;
+    string tenant_id = 2;
+    string session_id = 3;
+    MobileMoneyProvider provider = 4;
+    string phone_number = 5;
+    ussd.v1.common.Money amount = 6;
+    string reference = 7;
+    string description = 8;
+    PaymentType payment_type = 9;
+    ussd.v1.common.IdempotencyKey idempotency_key = 10;
+    string callback_url = 11;
+    int32 callback_timeout_seconds = 12;
+    ussd.v1.common.RetryPolicy retry_policy = 13;
+    map<string, string> metadata = 14;
+    google.protobuf.Struct provider_specific = 15;
+    bool require_pin = 16;
+    ussd.v1.common.TracingContext tracing = 17;
+    ussd.v1.common.RequestMetadata request_metadata = 18;
+    reserved 50 to 100;
+}
+
+message InitiatePaymentResponse {
+    string payment_id = 1;
+    PaymentStatus status = 2;
+    string provider_reference = 3;
+    google.protobuf.Timestamp initiated_at = 4;
+    int32 estimated_completion_seconds = 5;
+    string message = 6;
+    ussd.v1.common.Error error = 7;
+    ussd.v1.common.Money total_amount = 8;
+    ussd.v1.common.FeeBreakdown fee_breakdown = 9;
+    string ledger_transaction_id = 10;
+    reserved 50 to 100;
+}
+
+message BulkInitiatePaymentRequest {
+    string batch_id = 1;
+    string tenant_id = 2;
+    repeated InitiatePaymentRequest requests = 3;
+    bool continue_on_error = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message PreviewPaymentRequest {
+    string tenant_id = 1;
+    MobileMoneyProvider provider = 2;
+    ussd.v1.common.Money amount = 3;
+    PaymentType payment_type = 4;
+    google.protobuf.Struct provider_specific = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message PreviewPaymentResponse {
+    ussd.v1.common.Money base_amount = 1;
+    ussd.v1.common.FeeBreakdown fee_breakdown = 2;
+    ussd.v1.common.Money total_amount = 3;
+    string currency_code = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message InitiateDisbursementRequest {
+    string disbursement_id = 1;
+    string tenant_id = 2;
+    string session_id = 3;
+    MobileMoneyProvider provider = 4;
+    string phone_number = 5;
+    ussd.v1.common.Money amount = 6;
+    string reference = 7;
+    string description = 8;
+    string reason = 9;
+    ussd.v1.common.IdempotencyKey idempotency_key = 10;
+    map<string, string> metadata = 11;
+    ussd.v1.common.TracingContext tracing = 12;
+    ussd.v1.common.RequestMetadata request_metadata = 13;
+    reserved 50 to 100;
+}
+
+message InitiateDisbursementResponse {
+    string disbursement_id = 1;
+    PaymentStatus status = 2;
+    string provider_reference = 3;
+    google.protobuf.Timestamp initiated_at = 4;
+    ussd.v1.common.Error error = 5;
+    ussd.v1.common.Money total_amount = 6;
+    ussd.v1.common.FeeBreakdown fee_breakdown = 7;
+    string ledger_transaction_id = 8;
+    reserved 50 to 100;
+}
+
+message BulkInitiateDisbursementRequest {
+    string batch_id = 1;
+    string tenant_id = 2;
+    repeated InitiateDisbursementRequest requests = 3;
+    bool continue_on_error = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message GetPaymentStatusRequest {
+    string payment_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetPaymentStatusResponse {
+    string payment_id = 1;
+    PaymentStatus status = 2;
+    PaymentStatus previous_status = 3;
+    ussd.v1.common.Money amount = 4;
+    string provider_reference = 5;
+    google.protobuf.Timestamp initiated_at = 6;
+    google.protobuf.Timestamp completed_at = 7;
+    string failure_reason = 8;
+    int32 retry_count = 9;
+    ussd.v1.common.Error error = 10;
+    string ledger_transaction_id = 11;
+    reserved 50 to 100;
+}
+
+message GetPaymentDetailsRequest {
+    string payment_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetPaymentDetailsResponse {
+    PaymentDetails payment = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message PaymentDetails {
+    string payment_id = 1;
+    string tenant_id = 2;
+    string session_id = 3;
+    PaymentType payment_type = 4;
+    PaymentStatus status = 5;
+    MobileMoneyProvider provider = 6;
+    string phone_number = 7;
+    ussd.v1.common.Money amount = 8;
+    ussd.v1.common.FeeBreakdown fee_breakdown = 9;
+    string reference = 10;
+    string description = 11;
+    string provider_reference = 12;
+    google.protobuf.Timestamp initiated_at = 13;
+    google.protobuf.Timestamp completed_at = 14;
+    google.protobuf.Timestamp expires_at = 15;
+    string idempotency_key = 16;
+    string failure_reason = 17;
+    int32 retry_count = 18;
+    repeated PaymentAttempt attempts = 19;
+    map<string, string> metadata = 20;
+    string ledger_transaction_id = 21;
+    string reversal_reason = 22;
+    google.protobuf.Timestamp reversed_at = 23;
+    reserved 50 to 100;
+}
+
+message PaymentAttempt {
+    int32 attempt_number = 1;
+    google.protobuf.Timestamp attempted_at = 2;
+    bool success = 3;
+    string provider_response = 4;
+    string error_message = 5;
+    int32 duration_ms = 6;
+    reserved 50 to 100;
+}
+
+message RefundPaymentRequest {
+    string original_payment_id = 1;
+    string refund_id = 2;
+    string tenant_id = 3;
+    ussd.v1.common.Money amount = 4;
+    string reason = 5;
+    ussd.v1.common.IdempotencyKey idempotency_key = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message RefundPaymentResponse {
+    string refund_id = 1;
+    PaymentStatus status = 2;
+    ussd.v1.common.Money refund_amount = 3;
+    google.protobuf.Timestamp initiated_at = 4;
+    ussd.v1.common.Error error = 5;
+    string ledger_transaction_id = 6;
+    reserved 50 to 100;
+}
+
+message ReversePaymentRequest {
+    string payment_id = 1;
+    string tenant_id = 2;
+    string reason = 3;
+    ussd.v1.common.IdempotencyKey idempotency_key = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message ReversePaymentResponse {
+    string reversal_id = 1;
+    PaymentStatus status = 2;
+    google.protobuf.Timestamp initiated_at = 3;
+    ussd.v1.common.Error error = 4;
+    string ledger_transaction_id = 5;
+    reserved 50 to 100;
+}
+
+message ListPaymentsRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    repeated PaymentStatus statuses = 3;
+    repeated MobileMoneyProvider providers = 4;
+    string phone_number = 5;
+    google.protobuf.Timestamp from_date = 6;
+    google.protobuf.Timestamp to_date = 7;
+    PaymentType payment_type = 8;
+    string session_id = 9;
+    ussd.v1.common.TracingContext tracing = 10;
+    ussd.v1.common.RequestMetadata request_metadata = 11;
+    reserved 50 to 100;
+}
+
+message ListPaymentsResponse {
+    repeated PaymentDetails payments = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Money total_amount = 3;
+    ussd.v1.common.Money total_fees = 4;
+    int32 total_count = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetPaymentAnalyticsRequest {
+    string tenant_id = 1;
+    google.protobuf.Timestamp from_date = 2;
+    google.protobuf.Timestamp to_date = 3;
+    MobileMoneyProvider provider = 4;
+    string group_by = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message PaymentAnalyticsItem {
+    string dimension = 1;
+    int64 total_count = 2;
+    int64 success_count = 3;
+    int64 failure_count = 4;
+    ussd.v1.common.Money total_amount = 5;
+    ussd.v1.common.Money total_fees = 6;
+    reserved 50 to 100;
+}
+
+message GetPaymentAnalyticsResponse {
+    repeated PaymentAnalyticsItem items = 1;
+    ussd.v1.common.Error error = 2;
+    reserved 50 to 100;
+}
+
+message ValidatePhoneNumberRequest {
+    string phone_number = 1;
+    MobileMoneyProvider provider = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message ValidatePhoneNumberResponse {
+    bool valid = 1;
+    string normalized_number = 2;
+    MobileMoneyProvider detected_provider = 3;
+    string error_message = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message GetProviderBalanceRequest {
+    MobileMoneyProvider provider = 1;
+    string tenant_id = 2;
+    int32 cache_ttl_seconds = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message GetProviderBalanceResponse {
+    MobileMoneyProvider provider = 1;
+    ussd.v1.common.Money balance = 2;
+    ussd.v1.common.Money available_balance = 3;
+    ussd.v1.common.Money pending_balance = 4;
+    google.protobuf.Timestamp timestamp = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message GetProviderCapabilitiesRequest {
+    MobileMoneyProvider provider = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message GetProviderCapabilitiesResponse {
+    MobileMoneyProvider provider = 1;
+    bool supports_disbursement = 2;
+    bool supports_refund = 3;
+    bool supports_reversal = 4;
+    bool requires_pin = 5;
+    repeated string supported_currencies = 6;
+    ussd.v1.common.Money min_amount = 7;
+    ussd.v1.common.Money max_amount = 8;
+    ussd.v1.common.Error error = 9;
+    reserved 50 to 100;
+}
+
+message ProcessCallbackRequest {
+    MobileMoneyProvider provider = 1;
+    string provider_reference = 2;
+    string payment_id = 3;
+    CallbackStatus status = 4;
+    ussd.v1.common.Money amount = 5;
+    ussd.v1.common.Money fee = 6;
+    string phone_number = 7;
+    google.protobuf.Timestamp provider_timestamp = 8;
+    string signature = 9;
+    map<string, string> headers = 10;
+    google.protobuf.Struct provider_data = 11;
+    bytes raw_payload = 12;
+    ussd.v1.common.TracingContext tracing = 13;
+    ussd.v1.common.RequestMetadata request_metadata = 14;
+    reserved 50 to 100;
+
+    enum CallbackStatus {
+        CALLBACK_STATUS_UNSPECIFIED = 0;
+        SUCCESS = 1;
+        FAILED = 2;
+        TIMEOUT = 3;
+        CANCELLED = 4;
+        PENDING = 5;
+        reserved 6 to 20;
+    }
+}
+
+message ProcessCallbackResponse {
+    bool accepted = 1;
+    string message = 2;
+    string payment_id = 3;
+    PaymentStatus new_status = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message ReportDisputeRequest {
+    string original_payment_id = 1;
+    string tenant_id = 2;
+    DisputeReason reason = 3;
+    string description = 4;
+    ussd.v1.common.Money disputed_amount = 5;
+    map<string, string> evidence = 6;
+    string filed_by = 7;
+    ussd.v1.common.TracingContext tracing = 8;
+    ussd.v1.common.RequestMetadata request_metadata = 9;
+    reserved 50 to 100;
+}
+
+message ReportDisputeResponse {
+    string dispute_id = 1;
+    DisputeStatus status = 2;
+    google.protobuf.Timestamp filed_at = 3;
+    google.protobuf.Timestamp evidence_deadline = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message UpdateDisputeRequest {
+    string dispute_id = 1;
+    string tenant_id = 2;
+    DisputeStatus status = 3;
+    string resolution_notes = 4;
+    ussd.v1.common.Money resolved_amount = 5;
+    string resolved_by = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message UploadDisputeEvidenceRequest {
+    string dispute_id = 1;
+    string tenant_id = 2;
+    string evidence_type = 3;
+    bytes evidence_data = 4;
+    string mime_type = 5;
+    string filename = 6;
+    ussd.v1.common.TracingContext tracing = 7;
+    ussd.v1.common.RequestMetadata request_metadata = 8;
+    reserved 50 to 100;
+}
+
+message UploadDisputeEvidenceResponse {
+    string evidence_id = 1;
+    string upload_url = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetDisputeStatusRequest {
+    string dispute_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message Dispute {
+    string dispute_id = 1;
+    string original_payment_id = 2;
+    string tenant_id = 3;
+    DisputeReason reason = 4;
+    string description = 5;
+    ussd.v1.common.Money disputed_amount = 6;
+    ussd.v1.common.Money resolved_amount = 7;
+    DisputeStatus status = 8;
+    google.protobuf.Timestamp filed_at = 9;
+    google.protobuf.Timestamp resolved_at = 10;
+    string resolution_notes = 11;
+    repeated DisputeHistoryEntry history = 12;
+    repeated DisputeEvidence evidence = 13;
+    ussd.v1.common.Error error = 14;
+    reserved 50 to 100;
+}
+
+message DisputeEvidence {
+    string evidence_id = 1;
+    string evidence_type = 2;
+    string filename = 3;
+    string mime_type = 4;
+    string download_url = 5;
+    google.protobuf.Timestamp uploaded_at = 6;
+    reserved 50 to 100;
+}
+
+message DisputeHistoryEntry {
+    DisputeStatus from_status = 1;
+    DisputeStatus to_status = 2;
+    string action = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    string performed_by = 5;
+    reserved 50 to 100;
+}
+
+message ListDisputesRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    repeated DisputeStatus statuses = 3;
+    google.protobuf.Timestamp from_date = 4;
+    google.protobuf.Timestamp to_date = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message ListDisputesResponse {
+    repeated Dispute disputes = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GenerateSettlementFileRequest {
+    string tenant_id = 1;
+    MobileMoneyProvider provider = 2;
+    google.protobuf.Timestamp period_start = 3;
+    google.protobuf.Timestamp period_end = 4;
+    SettlementFileFormat format = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+
+    enum SettlementFileFormat {
+        CSV = 0;
+        JSON = 1;
+        XML = 2;
+        PDF = 3;
+        reserved 4 to 20;
+    }
+}
+
+message GenerateSettlementFileResponse {
+    string file_id = 1;
+    string file_reference = 2;
+    SettlementFileStatus status = 3;
+    google.protobuf.Timestamp generated_at = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+
+    enum SettlementFileStatus {
+        GENERATED = 0;
+        PROCESSING = 1;
+        COMPLETED = 2;
+        FAILED = 3;
+        reserved 4 to 20;
+    }
+}
+
+message GetSettlementFileRequest {
+    string file_id = 1;
+    string tenant_id = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message SettlementFile {
+    string file_id = 1;
+    string file_reference = 2;
+    string tenant_id = 3;
+    MobileMoneyProvider provider = 4;
+    google.protobuf.Timestamp period_start = 5;
+    google.protobuf.Timestamp period_end = 6;
+    string download_url = 7;
+    google.protobuf.Timestamp download_url_expires_at = 8;
+    int32 record_count = 9;
+    ussd.v1.common.Money total_amount = 10;
+    ussd.v1.common.Money total_fees = 11;
+    ussd.v1.common.Money total_settlement = 12;
+    string checksum_sha256 = 13;
+    string status = 14;
+    google.protobuf.Timestamp generated_at = 15;
+    reserved 50 to 100;
+}
+
+message ListSettlementFilesRequest {
+    string tenant_id = 1;
+    ussd.v1.common.Pagination pagination = 2;
+    MobileMoneyProvider provider = 3;
+    google.protobuf.Timestamp from_date = 4;
+    google.protobuf.Timestamp to_date = 5;
+    ussd.v1.common.TracingContext tracing = 6;
+    ussd.v1.common.RequestMetadata request_metadata = 7;
+    reserved 50 to 100;
+}
+
+message ListSettlementFilesResponse {
+    repeated SettlementFile files = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}

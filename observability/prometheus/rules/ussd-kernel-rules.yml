@@ -1,0 +1,36 @@
+groups:
+  - name: ussd-kernel
+    interval: 15s
+    rules:
+      - record: ussd:request_rate_5m
+        expr: rate(ussd_forward_ussd_total[5m])
+
+      - record: ussd:error_rate_5m
+        expr: rate(ussd_forward_ussd_total{status="error"}[5m])
+
+      - alert: HighErrorRate
+        expr: ussd:error_rate_5m > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "USSD request error rate is high"
+          description: "Error rate for ForwardUSSD is above 10% for more than 2 minutes."
+
+      - alert: ProviderDown
+        expr: rate(payment_provider_request_total{status=~"5.."}[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mobile money provider returning 5xx"
+          description: "Provider {{ $labels.provider }} is returning server errors."
+
+      - alert: HighSessionReconstructLatency
+        expr: histogram_quantile(0.99, rate(session_reconstruct_duration_seconds_bucket[5m])) > 0.01
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Session reconstruction P99 latency > 10ms"
+          description: "P99 session reconstruction latency is {{ $value }}s."

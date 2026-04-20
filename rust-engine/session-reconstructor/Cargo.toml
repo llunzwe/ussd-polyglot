@@ -1,0 +1,32 @@
+[package]
+name = "session-reconstructor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ussd-kernel-common = { path = "../common" }
+tokio.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+sqlx.workspace = true
+moka.workspace = true
+uuid.workspace = true
+prost-types.workspace = true
+sha2.workspace = true
+hex.workspace = true
+async-trait.workspace = true
+dotenvy = "0.15"
+tokio-stream = "0.1"
+tokio-rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+
+[[bin]]
+name = "session-reconstructor"
+path = "src/main.rs"

@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package ussd.v1.ai;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/ai";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - AI BRAIN SERVICE (v1)
+// =============================================================================
+// Bounded Context: AI & Personalization
+// Responsibility: Small Language Model inference, translation, intent detection,
+// entity extraction, session summarization, and predictive personalization.
+// Language: Python (PyTorch / Hugging Face).
+// =============================================================================
+
+service AIBrain {
+  rpc Translate(TranslateRequest) returns (TranslateResponse);
+  rpc Personalize(PersonalizeRequest) returns (PersonalizeResponse);
+  rpc Predict(PredictRequest) returns (PredictResponse);
+  rpc DetectIntent(DetectIntentRequest) returns (DetectIntentResponse);
+  rpc ExtractEntities(ExtractEntitiesRequest) returns (ExtractEntitiesResponse);
+  rpc SummarizeSession(SummarizeSessionRequest) returns (SummarizeSessionResponse);
+  rpc GetEmbedding(GetEmbeddingRequest) returns (GetEmbeddingResponse);
+  rpc GetModelInfo(GetModelInfoRequest) returns (ModelInfo);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message TranslateRequest {
+  string text = 1;
+  string source_language = 2;
+  string target_language = 3;
+  string tenant_id = 4;
+  ussd.v1.common.TracingContext tracing = 5;
+  ussd.v1.common.RequestMetadata metadata = 6;
+  reserved 50 to 100;
+}
+
+message TranslateResponse {
+  string translated_text = 1;
+  string detected_source_language = 2;
+  float confidence = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message PersonalizeRequest {
+  string menu_text = 1;
+  string phone_number = 2;
+  string tenant_id = 3;
+  map<string, string> user_context = 4;
+  string session_id = 5;
+  ussd.v1.common.TracingContext tracing = 6;
+  ussd.v1.common.RequestMetadata metadata = 7;
+  reserved 50 to 100;
+}
+
+message PersonalizeResponse {
+  string personalized_text = 1;
+  repeated string suggested_options = 2;
+  float confidence = 3;
+  map<string, string> reasoning = 4;
+  ussd.v1.common.Error error = 5;
+  reserved 50 to 100;
+}
+
+message PredictRequest {
+  string prompt = 1;
+  string model = 2;
+  map<string, string> context = 3;
+  string tenant_id = 4;
+  string session_id = 5;
+  ussd.v1.common.TracingContext tracing = 6;
+  ussd.v1.common.RequestMetadata metadata = 7;
+  reserved 50 to 100;
+}
+
+message PredictResponse {
+  string result = 1;
+  float confidence = 2;
+  map<string, string> metadata = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message DetectIntentRequest {
+  string input_text = 1;
+  string session_id = 2;
+  string tenant_id = 3;
+  google.protobuf.Struct session_context = 4;
+  ussd.v1.common.TracingContext tracing = 5;
+  ussd.v1.common.RequestMetadata metadata = 6;
+  reserved 50 to 100;
+}
+
+message DetectIntentResponse {
+  string detected_intent = 1;
+  float confidence = 2;
+  map<string, string> intent_scores = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message ExtractEntitiesRequest {
+  string input_text = 1;
+  string tenant_id = 2;
+  repeated string entity_types = 3;
+  ussd.v1.common.TracingContext tracing = 4;
+  ussd.v1.common.RequestMetadata metadata = 5;
+  reserved 50 to 100;
+}
+
+message Entity {
+  string entity_type = 1;
+  string value = 2;
+  int32 start_position = 3;
+  int32 end_position = 4;
+  float confidence = 5;
+  reserved 50 to 100;
+}
+
+message ExtractEntitiesResponse {
+  repeated Entity entities = 1;
+  ussd.v1.common.Error error = 2;
+  reserved 50 to 100;
+}
+
+message SummarizeSessionRequest {
+  string session_id = 1;
+  string tenant_id = 2;
+  int32 max_events = 3;
+  string summary_format = 4;
+  ussd.v1.common.TracingContext tracing = 5;
+  ussd.v1.common.RequestMetadata metadata = 6;
+  reserved 50 to 100;
+}
+
+message SummarizeSessionResponse {
+  string summary = 1;
+  repeated string key_actions = 2;
+  map<string, string> sentiment = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message GetEmbeddingRequest {
+  string text = 1;
+  string model = 2;
+  string tenant_id = 3;
+  ussd.v1.common.TracingContext tracing = 4;
+  ussd.v1.common.RequestMetadata metadata = 5;
+  reserved 50 to 100;
+}
+
+message GetEmbeddingResponse {
+  repeated float embedding = 1;
+  int32 dimensions = 2;
+  string model = 3;
+  ussd.v1.common.Error error = 4;
+  reserved 50 to 100;
+}
+
+message GetModelInfoRequest {
+  string model_name = 1;
+  string tenant_id = 2;
+  reserved 50 to 100;
+}
+
+message ModelInfo {
+  string model_name = 1;
+  string version = 2;
+  repeated string supported_languages = 3;
+  bool available = 4;
+  google.protobuf.Timestamp loaded_at = 5;
+  int64 inference_count = 6;
+  float average_latency_ms = 7;
+  ussd.v1.common.Error error = 8;
+  reserved 50 to 100;
+}
+
+message ListModelsRequest {
+  string tenant_id = 1;
+  bool available_only = 2;
+  ussd.v1.common.TracingContext tracing = 3;
+  ussd.v1.common.RequestMetadata metadata = 4;
+  reserved 50 to 100;
+}
+
+message ListModelsResponse {
+  repeated ModelInfo models = 1;
+  ussd.v1.common.Error error = 2;
+  reserved 50 to 100;
+}

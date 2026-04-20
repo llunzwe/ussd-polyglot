@@ -1,0 +1,290 @@
+syntax = "proto3";
+
+package ussd.v1.admin;
+
+option go_package = "github.com/openai-ussd-kernel/go-orchestrator/internal/gen/admin";
+
+import "v1/common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// OPEN AI-USSD KERNEL ENGINE - ADMIN SERVICE (v1)
+// =============================================================================
+// Bounded Context: System Operations
+// Responsibility: System-level administration, metrics, cache management,
+// dead letter queue operations, key rotation, projection rebuilds, and backups.
+// Language: Go.
+// =============================================================================
+
+service AdminService {
+    rpc GetSystemStatus(GetSystemStatusRequest) returns (SystemStatus);
+    rpc GetServiceMetrics(GetServiceMetricsRequest) returns (ServiceMetricsResponse);
+    rpc GetCacheStatus(GetCacheStatusRequest) returns (CacheStatusResponse);
+    rpc InvalidateCache(InvalidateCacheRequest) returns (InvalidateCacheResponse);
+    rpc GetDeadLetterQueue(GetDeadLetterQueueRequest) returns (GetDeadLetterQueueResponse);
+    rpc ReplayDeadLetter(ReplayDeadLetterRequest) returns (ReplayDeadLetterResponse);
+    rpc PurgeDeadLetter(PurgeDeadLetterRequest) returns (PurgeDeadLetterResponse);
+    rpc TriggerReconciliation(TriggerReconciliationRequest) returns (TriggerReconciliationResponse);
+    rpc RotateSigningKey(RotateSigningKeyRequest) returns (RotateSigningKeyResponse);
+    rpc PurgeOldSessions(PurgeOldSessionsRequest) returns (PurgeOldSessionsResponse);
+    rpc RebuildProjection(RebuildProjectionRequest) returns (RebuildProjectionResponse);
+    rpc BackupLedger(BackupLedgerRequest) returns (BackupLedgerResponse);
+    rpc GetSystemConfig(GetSystemConfigRequest) returns (SystemConfig);
+    rpc UpdateSystemConfig(UpdateSystemConfigRequest) returns (SystemConfig);
+    rpc Health(ussd.v1.common.HealthRequest) returns (ussd.v1.common.HealthResponse);
+}
+
+message GetSystemStatusRequest {
+    ussd.v1.common.TracingContext tracing = 1;
+    ussd.v1.common.RequestMetadata request_metadata = 2;
+    reserved 50 to 100;
+}
+
+message SystemStatus {
+    string status = 1;
+    repeated ServiceStatus services = 2;
+    google.protobuf.Timestamp checked_at = 3;
+    string version = 4;
+    string environment = 5;
+    ussd.v1.common.Error error = 6;
+    reserved 50 to 100;
+}
+
+message ServiceStatus {
+    string service_name = 1;
+    string status = 2;
+    string message = 3;
+    google.protobuf.Timestamp last_heartbeat = 4;
+    int32 latency_ms = 5;
+    reserved 50 to 100;
+}
+
+message GetServiceMetricsRequest {
+    string service_name = 1;
+    google.protobuf.Timestamp from_time = 2;
+    google.protobuf.Timestamp to_time = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message ServiceMetricsResponse {
+    string service_name = 1;
+    repeated Metric metrics = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message Metric {
+    string name = 1;
+    double value = 2;
+    string unit = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    map<string, string> labels = 5;
+    reserved 50 to 100;
+}
+
+message GetCacheStatusRequest {
+    string cache_key = 1;
+    string key_pattern = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message CacheStatusResponse {
+    repeated ussd.v1.common.CacheEntry entries = 1;
+    int64 total_keys = 2;
+    int64 memory_usage_bytes = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message InvalidateCacheRequest {
+    string cache_key = 1;
+    string key_pattern = 2;
+    string reason = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message InvalidateCacheResponse {
+    bool success = 1;
+    int32 invalidated_count = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message GetDeadLetterQueueRequest {
+    string source = 1;
+    bool unresolved_only = 2;
+    ussd.v1.common.Pagination pagination = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message DeadLetterItem {
+    string item_id = 1;
+    string source = 2;
+    google.protobuf.Struct payload = 3;
+    string failure_reason = 4;
+    int32 failure_count = 5;
+    google.protobuf.Timestamp last_failure_at = 6;
+    google.protobuf.Timestamp next_retry_at = 7;
+    bool is_resolved = 8;
+    reserved 50 to 100;
+}
+
+message GetDeadLetterQueueResponse {
+    repeated DeadLetterItem items = 1;
+    ussd.v1.common.PaginationMetadata pagination = 2;
+    int32 total_count = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message ReplayDeadLetterRequest {
+    string item_id = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message ReplayDeadLetterResponse {
+    bool success = 1;
+    string message = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message PurgeDeadLetterRequest {
+    string item_id = 1;
+    bool purge_all_resolved = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message PurgeDeadLetterResponse {
+    bool success = 1;
+    int32 purged_count = 2;
+    ussd.v1.common.Error error = 3;
+    reserved 50 to 100;
+}
+
+message TriggerReconciliationRequest {
+    string tenant_id = 1;
+    string provider_name = 2;
+    google.protobuf.Timestamp period_start = 3;
+    google.protobuf.Timestamp period_end = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message TriggerReconciliationResponse {
+    string run_id = 1;
+    string status = 2;
+    google.protobuf.Timestamp started_at = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message RotateSigningKeyRequest {
+    string key_id = 1;
+    string algorithm = 2;
+    int32 ttl_seconds = 3;
+    bool immediate = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message RotateSigningKeyResponse {
+    string new_key_id = 1;
+    google.protobuf.Timestamp effective_at = 2;
+    string public_key_pem = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message PurgeOldSessionsRequest {
+    google.protobuf.Timestamp older_than = 1;
+    bool dry_run = 2;
+    int32 batch_size = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message PurgeOldSessionsResponse {
+    int32 sessions_purged = 1;
+    int32 sessions_archived = 2;
+    google.protobuf.Timestamp completed_at = 3;
+    ussd.v1.common.Error error = 4;
+    reserved 50 to 100;
+}
+
+message RebuildProjectionRequest {
+    string projection_name = 1;
+    string tenant_id = 2;
+    bool dry_run = 3;
+    google.protobuf.Timestamp from_timestamp = 4;
+    ussd.v1.common.TracingContext tracing = 5;
+    ussd.v1.common.RequestMetadata request_metadata = 6;
+    reserved 50 to 100;
+}
+
+message RebuildProjectionResponse {
+    string projection_name = 1;
+    bool success = 2;
+    int64 events_replayed = 3;
+    google.protobuf.Timestamp completed_at = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message BackupLedgerRequest {
+    string backup_label = 1;
+    google.protobuf.Timestamp from_date = 2;
+    google.protobuf.Timestamp to_date = 3;
+    ussd.v1.common.TracingContext tracing = 4;
+    ussd.v1.common.RequestMetadata request_metadata = 5;
+    reserved 50 to 100;
+}
+
+message BackupLedgerResponse {
+    string backup_id = 1;
+    string download_url = 2;
+    string checksum = 3;
+    google.protobuf.Timestamp completed_at = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}
+
+message GetSystemConfigRequest {
+    string config_key = 1;
+    ussd.v1.common.TracingContext tracing = 2;
+    ussd.v1.common.RequestMetadata request_metadata = 3;
+    reserved 50 to 100;
+}
+
+message UpdateSystemConfigRequest {
+    string config_key = 1;
+    google.protobuf.Struct value = 2;
+    ussd.v1.common.TracingContext tracing = 3;
+    ussd.v1.common.RequestMetadata request_metadata = 4;
+    reserved 50 to 100;
+}
+
+message SystemConfig {
+    string config_key = 1;
+    google.protobuf.Struct value = 2;
+    google.protobuf.Timestamp updated_at = 3;
+    string updated_by = 4;
+    ussd.v1.common.Error error = 5;
+    reserved 50 to 100;
+}

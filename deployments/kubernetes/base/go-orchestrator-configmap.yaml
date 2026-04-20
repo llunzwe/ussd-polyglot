@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-orchestrator-config
+  namespace: open-ai-ussd-kernel
+  labels:
+    app.kubernetes.io/name: go-orchestrator
+    app.kubernetes.io/component: config
+data:
+  GRPC_PORT: "9090"
+  ADMIN_GRPC_PORT: "9091"
+  HTTP_PORT: "8080"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "ussd_kernel"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  SESSION_SERVICE_ADDR: "session-reconstructor:50051"
+  PAYMENT_SERVICE_ADDR: "payment-engine:50052"
